@@ -1,0 +1,25 @@
+pluginManagement {
+    repositories {
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        maven {
+            name = 'NeoForged'
+            url = 'https://maven.neoforged.net/releases'
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'worldsure'
+
+include 'common'
+
+// `-PcommonOnly` builds and tests the loader-independent core without
+// downloading Minecraft, which is handy offline and in quick CI checks.
+if (!providers.gradleProperty('commonOnly').isPresent()) {
+    include 'fabric'
+    include 'neoforge'
+}

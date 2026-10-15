@@ -1,0 +1,15 @@
+subprojects {
+    apply plugin: 'java'
+
+    group = mod_group
+    version = mod_version
+    base.archivesName = "${mod_id}-${project.name}"
+
+    repositories {
+        mavenCentral()
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+}

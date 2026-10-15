@@ -1,0 +1,24 @@
+// Loader-independent core: no Minecraft classes here, so it compiles and is
+// unit-tested without downloading the game. The loader modules compile these
+// sources into their own jars.
+
+// The core stays on the Java 21 language level so it builds on any JDK from
+// 21 up; the loader jars themselves target Java 25.
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+}
+
+dependencies {
+    compileOnly "com.google.code.gson:gson:${gson_version}"
+    compileOnly "org.slf4j:slf4j-api:${slf4j_version}"
+
+    testImplementation "com.google.code.gson:gson:${gson_version}"
+    testImplementation "org.slf4j:slf4j-api:${slf4j_version}"
+    testImplementation platform("org.junit:junit-bom:${junit_version}")
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}

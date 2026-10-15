@@ -1,0 +1,42 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+def common = project(':common')
+
+sourceSets.main {
+    java.srcDir common.file('src/main/java')
+    resources.srcDir common.file('src/main/resources')
+}
+
+java {
+    sourceCompatibility = JavaVersion.toVersion(java_version)
+    targetCompatibility = JavaVersion.toVersion(java_version)
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = java_version as int
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+}
+
+processResources {
+    def props = [
+            version            : mod_version,
+            mod_id             : mod_id,
+            mod_name           : mod_name,
+            mod_description    : mod_description,
+            mod_license        : mod_license,
+            minecraft_version  : minecraft_version,
+            fabric_loader_version: fabric_loader_version,
+            java_version       : java_version,
+    ]
+    inputs.properties props
+    filesMatching('fabric.mod.json') {
+        expand props
+    }
+}
