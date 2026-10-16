@@ -21,13 +21,18 @@ jobs:
         run: ./gradlew :fabric:genSources --stacktrace -q || true
       - name: Print classes
         run: |
-          SRC=$(find ~/.gradle fabric/.gradle .gradle -name '*sources*.jar' 2>/dev/null | grep -i minecraft | head -1)
+          SRC=$(realpath "$(find ~/.gradle .gradle fabric/.gradle -name '*sources*.jar' 2>/dev/null | grep -i minecraft-merged | head -1)")
+          JAR="${SRC%-sources.jar}.jar"
           echo "SOURCES JAR: $SRC"
-          mkdir -p /tmp/src && cd /tmp/src && unzip -q -o "$SRC"
-          while read -r cls; do
+          mkdir -p /tmp/src && (cd /tmp/src && unzip -q -o "$SRC")
+          while read -r mode cls; do
             [ -z "$cls" ] && continue
-            f="/tmp/src/$(echo "$cls" | tr . /).java"
-            echo "===== BEGIN $cls"
-            if [ -f "$f" ]; then cat -n "$f"; else echo "MISSING"; ls "$(dirname "$f")" | head -50; fi
+            echo "===== BEGIN $mode $cls"
+            if [ "$mode" = src ]; then
+              f="/tmp/src/$(echo "$cls" | tr . /).java"
+              if [ -f "$f" ]; then cat -n "$f"; else echo MISSING; fi
+            else
+              javap -p -cp "$JAR" "$cls" || echo MISSING
+            fi
             echo "===== END $cls"
           done < "$GITHUB_WORKSPACE/.github/inspect-classes.txt"

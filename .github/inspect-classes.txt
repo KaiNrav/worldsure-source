@@ -1,5 +1,23 @@
-net.minecraft.client.gui.screens.worldselection.WorldOpenFlows
-net.minecraft.world.level.chunk.storage.SerializableChunkData
-net.minecraft.world.level.chunk.storage.EntityStorage
-net.minecraft.client.gui.screens.ConfirmScreen
-net.minecraft.client.gui.screens.Screen
+src net.minecraft.client.gui.screens.worldselection.WorldOpenFlows
+src net.minecraft.world.level.chunk.storage.EntityStorage
+src net.minecraft.client.gui.screens.ConfirmScreen
+src net.minecraft.world.level.chunk.storage.SerializableChunkData
+sig net.minecraft.world.level.chunk.PalettedContainer
+sig net.minecraft.world.level.chunk.PalettedContainerRO
+sig net.minecraft.world.level.chunk.LevelChunkSection
+sig net.minecraft.world.level.chunk.ChunkAccess
+sig net.minecraft.world.level.entity.ChunkEntities
+sig net.minecraft.client.gui.screens.Screen
+sig net.minecraft.client.gui.GuiGraphics
+sig net.minecraft.client.gui.components.Button
+sig net.minecraft.client.gui.components.Button$Builder
+sig net.minecraft.client.Minecraft
+sig net.minecraft.world.level.storage.LevelStorageSource
+sig net.minecraft.world.entity.EntityType
+sig net.minecraft.world.level.block.state.BlockState
+sig net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase
+sig net.minecraft.world.level.block.entity.BlockEntity
+sig net.minecraft.server.level.ServerLevel
+sig net.minecraft.resources.Identifier
+sig net.minecraft.resources.ResourceLocation
+sig net.minecraft.core.Holder
