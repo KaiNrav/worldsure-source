@@ -1,0 +1,69 @@
+package io.github.kainrav.worldsure.mc;
+
+import io.github.kainrav.worldsure.Report;
+import io.github.kainrav.worldsure.Worldsure;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.storage.LevelResource;
+
+import java.nio.file.Path;
+import java.util.List;
+
+/** The server lifecycle, shared by both loaders; each loader calls these from its own events. */
+public final class WorldsureMc {
+    private WorldsureMc() {
+    }
+
+    public static Path worldDir(MinecraftServer server) {
+        return server.getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize();
+    }
+
+    /** Before the levels load. */
+    public static void onServerStarting(MinecraftServer server) {
+        Platform platform = Platform.get();
+        Worldsure.beforeWorldLoad(worldDir(server), platform.gameDir(), platform.configDir(), platform.installedMods());
+    }
+
+    public static void onServerStarted(MinecraftServer server) {
+        Worldsure.afterWorldLoad(worldDir(server), Platform.get().loaderName(), Platform.get().installedMods());
+    }
+
+    /** After the final save. */
+    public static void onServerStopped(MinecraftServer server) {
+        Worldsure.onWorldClosed(worldDir(server), Platform.get().loaderName(), Platform.get().installedMods());
+        MissingBlocks.clear();
+    }
+
+    public static void onPlayerJoin(ServerPlayer player, MinecraftServer server) {
+        if (!server.isDedicatedServer()) {
+            for (Report.Line line : Worldsure.takeJoinReport()) {
+                player.sendSystemMessage(Component.literal(line.text()).withStyle(color(line.kind())));
+            }
+        }
+    }
+
+    public static ChatFormatting color(Report.Kind kind) {
+        return switch (kind) {
+            case HEADER -> ChatFormatting.GOLD;
+            case REMOVED, DOWNGRADED, BACKUP_FAILED -> ChatFormatting.RED;
+            case UPDATED -> ChatFormatting.YELLOW;
+            case ADDED, BACKUP_OK -> ChatFormatting.GREEN;
+            case INFO -> ChatFormatting.GRAY;
+        };
+    }
+
+    /** Joins report lines into one multi-line text with each line coloured by its kind. */
+    public static Component toComponent(List<Report.Line> lines) {
+        MutableComponent text = Component.empty();
+        for (int i = 0; i < lines.size(); i++) {
+            if (i > 0) {
+                text.append("\n");
+            }
+            text.append(Component.literal(lines.get(i).text().strip()).withStyle(color(lines.get(i).kind())));
+        }
+        return text;
+    }
+}

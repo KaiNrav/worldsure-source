@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "io.github.kainrav.worldsure.mc.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "EntityStorageMixin",
+    "SerializableChunkDataMixin"
+  ],
+  "client": [
+    "client.WorldOpenFlowsMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

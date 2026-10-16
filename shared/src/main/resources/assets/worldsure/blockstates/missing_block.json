@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "worldsure:block/missing_block" }
+  }
+}

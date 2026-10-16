@@ -4,9 +4,13 @@ plugins {
 
 def common = project(':common')
 
+// common/ is plain Java; shared/ is Minecraft code that compiles unchanged on both
+// loaders because 26.x ships unobfuscated with the same names everywhere.
 sourceSets.main {
     java.srcDir common.file('src/main/java')
+    java.srcDir rootProject.file('shared/src/main/java')
     resources.srcDir common.file('src/main/resources')
+    resources.srcDir rootProject.file('shared/src/main/resources')
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(java_version as int)
@@ -20,6 +24,7 @@ neoForge {
         }
         server {
             server()
+            gameDirectory = project.file('run')
             programArgument '--nogui'
         }
     }

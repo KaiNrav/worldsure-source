@@ -24,3 +24,28 @@ jobs:
           path: |
             fabric/build/libs/*.jar
             neoforge/build/libs/*.jar
+
+  smoke:
+    # Runs a real dedicated server per loader: passport, backup and placeholder round trip.
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        loader: [fabric, neoforge]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Server smoke test
+        timeout-minutes: 30
+        run: python3 .github/smoke/smoke.py ${{ matrix.loader }}
+      - name: Upload server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-${{ matrix.loader }}-logs
+          path: ${{ matrix.loader }}/run/logs/

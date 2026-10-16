@@ -10,6 +10,9 @@ displayName = "${mod_name}"
 authors = "KaiNrav"
 description = '''${mod_description}'''
 
+[[mixins]]
+config = "worldsure.mixins.json"
+
 [[dependencies.${mod_id}]]
 modId = "neoforge"
 type = "required"

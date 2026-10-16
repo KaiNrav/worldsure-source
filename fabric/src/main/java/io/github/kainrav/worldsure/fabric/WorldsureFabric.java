@@ -1,46 +1,50 @@
 package io.github.kainrav.worldsure.fabric;
 
 import io.github.kainrav.worldsure.ModInfo;
-import io.github.kainrav.worldsure.Report;
-import io.github.kainrav.worldsure.Worldsure;
+import io.github.kainrav.worldsure.mc.MissingBlocks;
+import io.github.kainrav.worldsure.mc.Platform;
+import io.github.kainrav.worldsure.mc.WorldsureMc;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.nio.file.Path;
 import java.util.List;
 
-public final class WorldsureFabric implements ModInitializer {
-    private static final String LOADER = "fabric";
-
+public final class WorldsureFabric implements ModInitializer, Platform {
     @Override
     public void onInitialize() {
-        FabricLoader loader = FabricLoader.getInstance();
+        Platform.set(this);
+        Registry.register(BuiltInRegistries.BLOCK, MissingBlocks.KEY, MissingBlocks.create());
         // SERVER_STARTING fires before the levels load, so the backup sees the world as it was on disk.
-        ServerLifecycleEvents.SERVER_STARTING.register(server ->
-                Worldsure.beforeWorldLoad(worldDir(server), loader.getGameDir(), loader.getConfigDir(), installedMods()));
-        ServerLifecycleEvents.SERVER_STARTED.register(server ->
-                Worldsure.afterWorldLoad(worldDir(server), LOADER, installedMods()));
-        ServerLifecycleEvents.SERVER_STOPPED.register(server -> Worldsure.onWorldClosed());
-        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            if (!server.isDedicatedServer()) {
-                showReport(handler.getPlayer(), Worldsure.takeJoinReport());
-            }
-        });
+        ServerLifecycleEvents.SERVER_STARTING.register(WorldsureMc::onServerStarting);
+        ServerLifecycleEvents.SERVER_STARTED.register(WorldsureMc::onServerStarted);
+        ServerLifecycleEvents.SERVER_STOPPED.register(WorldsureMc::onServerStopped);
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
+                WorldsureMc.onPlayerJoin(handler.getPlayer(), server));
     }
 
-    private static Path worldDir(MinecraftServer server) {
-        return server.getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize();
+    @Override
+    public String loaderName() {
+        return "fabric";
     }
 
-    private static List<ModInfo> installedMods() {
+    @Override
+    public Path gameDir() {
+        return FabricLoader.getInstance().getGameDir();
+    }
+
+    @Override
+    public Path configDir() {
+        return FabricLoader.getInstance().getConfigDir();
+    }
+
+    @Override
+    public List<ModInfo> installedMods() {
         return FabricLoader.getInstance().getAllMods().stream()
                 // Mods bundled inside another jar (the Fabric API modules, for example) come and go with their parent.
                 .filter(mod -> mod.getContainingMod().isEmpty())
@@ -48,21 +52,5 @@ public final class WorldsureFabric implements ModInitializer {
                 .filter(meta -> !meta.getId().equals("java"))
                 .map(meta -> new ModInfo(meta.getId(), meta.getVersion().getFriendlyString()))
                 .toList();
-    }
-
-    private static void showReport(ServerPlayer player, List<Report.Line> lines) {
-        for (Report.Line line : lines) {
-            player.sendSystemMessage(Component.literal(line.text()).withStyle(color(line.kind())));
-        }
-    }
-
-    private static ChatFormatting color(Report.Kind kind) {
-        return switch (kind) {
-            case HEADER -> ChatFormatting.GOLD;
-            case REMOVED, DOWNGRADED, BACKUP_FAILED -> ChatFormatting.RED;
-            case UPDATED -> ChatFormatting.YELLOW;
-            case ADDED, BACKUP_OK -> ChatFormatting.GREEN;
-            case INFO -> ChatFormatting.GRAY;
-        };
     }
 }

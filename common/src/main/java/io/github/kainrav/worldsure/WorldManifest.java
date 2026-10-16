@@ -13,11 +13,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 
 /**
  * The world passport: which mods, at which versions, the world was last played with.
@@ -33,14 +35,25 @@ public final class WorldManifest {
     private final String loader;
     private final String savedAt;
     private final Map<String, String> mods;
+    private final Map<String, ObjectCounts> counts;
 
     public WorldManifest(String loader, String savedAt, List<ModInfo> mods) {
+        this(loader, savedAt, mods, Map.of());
+    }
+
+    public WorldManifest(String loader, String savedAt, List<ModInfo> mods, Map<String, ObjectCounts> counts) {
         this.loader = loader;
         this.savedAt = savedAt;
         this.mods = new LinkedHashMap<>();
         mods.stream()
                 .sorted(Comparator.comparing(ModInfo::id))
                 .forEach(mod -> this.mods.put(mod.id(), mod.version()));
+        this.counts = new TreeMap<>(counts);
+    }
+
+    /** Modded objects per namespace in the chunks saved so far; empty for worlds saved before counting existed. */
+    public Map<String, ObjectCounts> counts() {
+        return Collections.unmodifiableMap(counts);
     }
 
     public String loader() {
@@ -74,7 +87,15 @@ public final class WorldManifest {
             }
             List<ModInfo> mods = new ArrayList<>();
             stored.mods.forEach((id, version) -> mods.add(new ModInfo(id, version == null ? "" : version)));
-            return Optional.of(new WorldManifest(stored.loader, stored.savedAt, mods));
+            Map<String, ObjectCounts> counts = new TreeMap<>();
+            if (stored.counts != null) {
+                stored.counts.forEach((namespace, c) -> {
+                    if (c != null) {
+                        counts.put(namespace, new ObjectCounts(c.blocks, c.blockEntities, c.entities));
+                    }
+                });
+            }
+            return Optional.of(new WorldManifest(stored.loader, stored.savedAt, mods, counts));
         } catch (JsonParseException e) {
             throw new IOException("Passport " + file + " is not valid JSON", e);
         }
@@ -90,6 +111,14 @@ public final class WorldManifest {
         stored.loader = loader;
         stored.savedAt = savedAt;
         stored.mods = mods;
+        stored.counts = new TreeMap<>();
+        counts.forEach((namespace, c) -> {
+            StoredCounts out = new StoredCounts();
+            out.blocks = c.blocks();
+            out.blockEntities = c.blockEntities();
+            out.entities = c.entities();
+            stored.counts.put(namespace, out);
+        });
         try (Writer writer = Files.newBufferedWriter(tmp, StandardCharsets.UTF_8)) {
             GSON.toJson(stored, writer);
         }
@@ -106,5 +135,12 @@ public final class WorldManifest {
         String loader;
         String savedAt;
         Map<String, String> mods;
+        Map<String, StoredCounts> counts;
+    }
+
+    private static final class StoredCounts {
+        long blocks;
+        long blockEntities;
+        long entities;
     }
 }
