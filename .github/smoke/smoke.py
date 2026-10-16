@@ -98,10 +98,11 @@ def overworld_region():
 
 
 def block_id(entry):
-    """A palette entry is a bare id string, or {id, properties} for blocks with several states."""
+    """A palette entry is a bare id string, or {id, properties} for blocks with several states.
+    A list mixing both forms is stored as compounds, with each bare string wrapped as {"": id}."""
     if entry.type == nbt.STRING:
         return entry
-    tag = entry.value.get("id") or entry.value.get("Name")
+    tag = entry.value.get("") or entry.value.get("id") or entry.value.get("Name")
     if tag is None:
         raise SystemExit(f"Unexpected palette entry: {sorted(entry.value)}")
     return tag
