@@ -1,4 +1,0 @@
-src net.minecraft.world.level.block.state.BlockState
-grep:CODEC|codec|Codec net.minecraft.world.level.block.state.StateHolder
-sig net.minecraft.nbt.StringTag
-sig net.minecraft.nbt.Tag
