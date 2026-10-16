@@ -28,9 +28,11 @@ jobs:
           while read -r mode cls; do
             [ -z "$cls" ] && continue
             echo "===== BEGIN $mode $cls"
+            f="/tmp/src/$(echo "$cls" | tr . /).java"
             if [ "$mode" = src ]; then
-              f="/tmp/src/$(echo "$cls" | tr . /).java"
               if [ -f "$f" ]; then cat -n "$f"; else echo MISSING; fi
+            elif [ "${mode%%:*}" = grep ]; then
+              grep -n -C4 -E "${mode#grep:}" "$f" || echo NO MATCH
             else
               javap -p -cp "$JAR" "$cls" || echo MISSING
             fi
