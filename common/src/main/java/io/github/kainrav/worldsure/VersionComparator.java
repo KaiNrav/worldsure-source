@@ -34,7 +34,18 @@ public final class VersionComparator implements Comparator<String> {
             // A release is newer than any pre-release of the same version.
             return Boolean.compare(preA.isEmpty(), preB.isEmpty());
         }
-        return comparePart(preA, preB);
+        // Compare piece by piece so "beta.2" < "beta.10" and "1.21.1-0.5.9" < "1.21.1-0.5.10".
+        String[] piecesA = preA.split("[._-]");
+        String[] piecesB = preB.split("[._-]");
+        int common = Math.min(piecesA.length, piecesB.length);
+        for (int i = 0; i < common; i++) {
+            int result = comparePart(piecesA[i], piecesB[i]);
+            if (result != 0) {
+                return result;
+            }
+        }
+        // With equal leading pieces the longer one is newer, so "beta" < "beta.1".
+        return Integer.compare(piecesA.length, piecesB.length);
     }
 
     private static String stripBuild(String version) {

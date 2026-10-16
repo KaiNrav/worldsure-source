@@ -3,6 +3,7 @@ package io.github.kainrav.worldsure;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VersionComparatorTest {
@@ -21,6 +22,27 @@ class VersionComparatorTest {
     void preReleaseSortsBeforeRelease() {
         assertEquals(-1, cmp("1.2.0-beta.1", "1.2.0"));
         assertEquals(-1, cmp("1.2.0-alpha", "1.2.0-beta"));
+    }
+
+    @Test
+    void preReleasePiecesCompareAsNumbers() {
+        assertEquals(-1, cmp("1.0.0-beta.2", "1.0.0-beta.10"));
+        assertEquals(-1, cmp("1.0.0-beta", "1.0.0-beta.1"));
+        assertEquals(0, cmp("1.0.0-beta.2", "1.0.0-beta.2"));
+    }
+
+    @Test
+    void minecraftPrefixedVersionsCompareTheModPart() {
+        assertEquals(-1, cmp("1.21.1-0.5.9", "1.21.1-0.5.10"));
+        assertEquals(-1, cmp("mc1.21-1.2.9", "mc1.21-1.2.10"));
+        assertEquals(1, cmp("1.21.1-0.6.0", "1.21.1-0.5.10"));
+    }
+
+    @Test
+    void dashSuffixedUpdateIsNotADowngrade() {
+        assertFalse(new ModDiff.VersionChange("mod", "1.21.1-0.5.9", "1.21.1-0.5.10").isDowngrade());
+        assertFalse(new ModDiff.VersionChange("mod", "1.0.0-beta.2", "1.0.0-beta.10").isDowngrade());
+        assertTrue(new ModDiff.VersionChange("mod", "1.0.0-beta.10", "1.0.0-beta.2").isDowngrade());
     }
 
     @Test
