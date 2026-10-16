@@ -101,7 +101,10 @@ def block_id(entry):
     """A palette entry is a bare id string, or {id, properties} for blocks with several states."""
     if entry.type == nbt.STRING:
         return entry
-    return entry.value["id"]
+    tag = entry.value.get("id") or entry.value.get("Name")
+    if tag is None:
+        raise SystemExit(f"Unexpected palette entry: {sorted(entry.value)}")
+    return tag
 
 
 def palette_entries(chunk):
