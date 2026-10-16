@@ -7,6 +7,8 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.LongArrayTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.ChunkPos;
@@ -31,11 +33,13 @@ public final class MissingBlocks {
     public static final Identifier ID = Identifier.fromNamespaceAndPath(Worldsure.MOD_ID, "missing_block");
     public static final ResourceKey<Block> KEY = ResourceKey.create(Registries.BLOCK, ID);
     private static final String PLACEHOLDER_NAME = ID.toString();
+    /** A block with a single state is stored as its bare id; others as {id, properties}. */
+    private static final Tag PLACEHOLDER = StringTag.valueOf(PLACEHOLDER_NAME);
 
     /** dimension + chunk -> what the chunk held before placeholders went in */
     private static final Map<String, Stash> STASHES = new ConcurrentHashMap<>();
 
-    private record Stash(Map<Integer, PackedSection<CompoundTag>> sections, List<CompoundTag> blockEntities) {
+    private record Stash(Map<Integer, PackedSection<Tag>> sections, List<CompoundTag> blockEntities) {
     }
 
     private MissingBlocks() {
@@ -57,13 +61,24 @@ public final class MissingBlocks {
         return 32 - Integer.numberOfLeadingZeros(Block.BLOCK_STATE_REGISTRY.size() - 1);
     }
 
-    private static boolean isMissing(CompoundTag entry) {
-        Identifier id = Identifier.tryParse(entry.getStringOr("Name", ""));
+    /** The block id of a palette entry: a bare id string, or a compound with "id" (older worlds used "Name"). */
+    static String blockId(Tag entry) {
+        if (entry instanceof StringTag string) {
+            return string.value();
+        }
+        if (entry instanceof CompoundTag compound) {
+            return compound.getString("id").or(() -> compound.getString("Name")).orElse("");
+        }
+        return "";
+    }
+
+    private static boolean isMissing(Tag entry) {
+        Identifier id = Identifier.tryParse(blockId(entry));
         return id != null && !BuiltInRegistries.BLOCK.containsKey(id);
     }
 
-    private static boolean isPlaceholder(CompoundTag entry) {
-        return PLACEHOLDER_NAME.equals(entry.getStringOr("Name", ""));
+    private static boolean isPlaceholder(Tag entry) {
+        return PLACEHOLDER_NAME.equals(blockId(entry));
     }
 
     private static boolean isMissingBlockEntity(CompoundTag tag) {
@@ -71,17 +86,15 @@ public final class MissingBlocks {
         return id != null && !BuiltInRegistries.BLOCK_ENTITY_TYPE.containsKey(id);
     }
 
-    private static List<CompoundTag> palette(CompoundTag blockStates) {
-        List<CompoundTag> palette = new ArrayList<>();
-        blockStates.getListOrEmpty("palette").compoundStream().forEach(palette::add);
-        return palette;
+    private static List<Tag> palette(CompoundTag blockStates) {
+        return new ArrayList<>(blockStates.getListOrEmpty("palette"));
     }
 
-    private static PackedSection<CompoundTag> read(CompoundTag blockStates) {
+    private static PackedSection<Tag> read(CompoundTag blockStates) {
         return PackedSection.unpack(palette(blockStates), blockStates.getLongArray("data").orElse(null), globalBits());
     }
 
-    private static void store(CompoundTag blockStates, PackedSection<CompoundTag> section) {
+    private static void store(CompoundTag blockStates, PackedSection<Tag> section) {
         ListTag palette = new ListTag();
         palette.addAll(section.palette());
         blockStates.put("palette", palette);
@@ -100,7 +113,7 @@ public final class MissingBlocks {
      */
     public static CompoundTag replaceMissing(String dimension, CompoundTag chunkTag) {
         ListTag sections = chunkTag.getListOrEmpty("sections");
-        Map<Integer, PackedSection<CompoundTag>> originals = new HashMap<>();
+        Map<Integer, PackedSection<Tag>> originals = new HashMap<>();
         for (int i = 0; i < sections.size(); i++) {
             CompoundTag section = sections.getCompoundOrEmpty(i);
             CompoundTag blockStates = section.getCompound("block_states").orElse(null);
@@ -116,14 +129,12 @@ public final class MissingBlocks {
         }
 
         CompoundTag copy = chunkTag.copy();
-        CompoundTag placeholder = new CompoundTag();
-        placeholder.putString("Name", PLACEHOLDER_NAME);
         ListTag copiedSections = copy.getListOrEmpty("sections");
         for (int i = 0; i < copiedSections.size(); i++) {
             CompoundTag section = copiedSections.getCompoundOrEmpty(i);
-            PackedSection<CompoundTag> original = originals.get((int) section.getByteOr("Y", (byte) 0));
+            PackedSection<Tag> original = originals.get((int) section.getByteOr("Y", (byte) 0));
             if (original != null) {
-                store(section.getCompoundOrEmpty("block_states"), original.replace(MissingBlocks::isMissing, placeholder));
+                store(section.getCompoundOrEmpty("block_states"), original.replace(MissingBlocks::isMissing, PLACEHOLDER));
             }
         }
         if (!missingEntities.isEmpty()) {
@@ -153,17 +164,17 @@ public final class MissingBlocks {
             return;
         }
         Map<Integer, boolean[]> placeholderPositions = new HashMap<>();
-        Map<Integer, PackedSection<CompoundTag>> stillNeeded = new HashMap<>();
+        Map<Integer, PackedSection<Tag>> stillNeeded = new HashMap<>();
         ListTag sections = chunkTag.getListOrEmpty("sections");
         for (int i = 0; i < sections.size(); i++) {
             CompoundTag section = sections.getCompoundOrEmpty(i);
             int y = section.getByteOr("Y", (byte) 0);
-            PackedSection<CompoundTag> original = stash.sections().get(y);
+            PackedSection<Tag> original = stash.sections().get(y);
             CompoundTag blockStates = section.getCompound("block_states").orElse(null);
             if (original == null || blockStates == null) {
                 continue;
             }
-            PackedSection<CompoundTag> current = read(blockStates);
+            PackedSection<Tag> current = read(blockStates);
             if (!current.contains(MissingBlocks::isPlaceholder)) {
                 continue;
             }
@@ -209,7 +220,7 @@ public final class MissingBlocks {
             if (blockStates == null) {
                 continue;
             }
-            read(blockStates).countBy(entry -> namespace(entry.getStringOr("Name", "")))
+            read(blockStates).countBy(entry -> namespace(blockId(entry)))
                     .forEach((namespace, n) -> counts.computeIfAbsent(namespace, k -> new long[2])[0] += n);
         }
         chunkTag.getListOrEmpty("block_entities").compoundStream()

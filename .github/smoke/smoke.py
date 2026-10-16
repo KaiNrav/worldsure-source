@@ -97,14 +97,22 @@ def overworld_region():
     return candidates[0]
 
 
-def palette_names(chunk):
-    names = set()
+def block_id(entry):
+    """A palette entry is a bare id string, or {id, properties} for blocks with several states."""
+    if entry.type == nbt.STRING:
+        return entry
+    return entry.value["id"]
+
+
+def palette_entries(chunk):
     for section in chunk.value["sections"].value:
         states = section.value.get("block_states")
         if states:
-            for entry in states.value["palette"].value:
-                names.add(entry.value["Name"].value)
-    return names
+            yield from states.value["palette"].value
+
+
+def palette_names(chunk):
+    return {block_id(entry).value for entry in palette_entries(chunk)}
 
 
 def check(condition, message):
@@ -129,13 +137,11 @@ def main():
     region = overworld_region()
     chunk = nbt.read_chunk(region, 0)
     renamed = 0
-    for section in chunk.value["sections"].value:
-        states = section.value.get("block_states")
-        if states:
-            for entry in states.value["palette"].value:
-                if entry.value["Name"].value == "minecraft:stone":
-                    entry.value["Name"].value = "fakemod:stone"
-                    renamed += 1
+    for entry in palette_entries(chunk):
+        name = block_id(entry)
+        if name.value == "minecraft:stone":
+            name.value = "fakemod:stone"
+            renamed += 1
     check(renamed > 0, f"chunk 0,0 has stone to turn into fakemod:stone ({renamed} sections)")
     nbt.write_chunk(region, 0, chunk)
 

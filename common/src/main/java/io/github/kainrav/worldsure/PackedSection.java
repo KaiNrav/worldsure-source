@@ -64,6 +64,9 @@ public record PackedSection<E>(List<E> palette, int[] indices) {
 
     /** How many positions hold each key, e.g. blocks per mod namespace. */
     public <K> Map<K, Long> countBy(java.util.function.Function<E, K> key) {
+        if (palette.isEmpty()) {
+            return Map.of();
+        }
         long[] perEntry = new long[palette.size()];
         for (int index : indices) {
             perEntry[index]++;
