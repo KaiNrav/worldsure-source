@@ -1,0 +1,96 @@
+name: Release
+
+# Push a tag like v0.1.0 (it must match mod_version in gradle.properties).
+# Creates a GitHub release with both jars. If the MODRINTH_TOKEN / CURSEFORGE_TOKEN secrets and the
+# MODRINTH_ID / CURSEFORGE_ID repository variables are set, the jars are published there too.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+      CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Read version and changelog
+        id: meta
+        run: |
+          prop() { grep "^$1=" gradle.properties | cut -d= -f2-; }
+          version=$(prop mod_version)
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match mod_version ${version}" >&2
+            exit 1
+          fi
+          # The section of CHANGELOG.md under "## <version>", up to the next "## ".
+          awk -v v="## ${version}" '$0 == v {on=1; next} /^## / {on=0} on' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "CHANGELOG.md has no section for ${version}" >&2
+            exit 1
+          fi
+          {
+            echo "version=${version}"
+            echo "minecraft=$(prop minecraft_version)"
+            echo "java=$(prop java_version)"
+            echo "type=$(prop release_type)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and test
+        run: ./gradlew build --stacktrace
+
+      - name: GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Worldsure ${{ steps.meta.outputs.version }}
+          body_path: release-notes.md
+          prerelease: ${{ steps.meta.outputs.type != 'release' }}
+          files: |
+            fabric/build/libs/worldsure-fabric-*[0-9].jar
+            neoforge/build/libs/worldsure-neoforge-*[0-9].jar
+
+      - name: Publish Fabric to Modrinth and CurseForge
+        if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != ''
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: ${{ vars.MODRINTH_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          curseforge-id: ${{ vars.CURSEFORGE_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files: fabric/build/libs/worldsure-fabric-*[0-9].jar
+          name: Worldsure ${{ steps.meta.outputs.version }} (Fabric)
+          version: ${{ steps.meta.outputs.version }}+fabric
+          version-type: ${{ steps.meta.outputs.type }}
+          changelog-file: release-notes.md
+          loaders: fabric
+          game-versions: ${{ steps.meta.outputs.minecraft }}
+          java: ${{ steps.meta.outputs.java }}
+          dependencies: fabric-api(required)
+
+      - name: Publish NeoForge to Modrinth and CurseForge
+        if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != ''
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: ${{ vars.MODRINTH_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          curseforge-id: ${{ vars.CURSEFORGE_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files: neoforge/build/libs/worldsure-neoforge-*[0-9].jar
+          name: Worldsure ${{ steps.meta.outputs.version }} (NeoForge)
+          version: ${{ steps.meta.outputs.version }}+neoforge
+          version-type: ${{ steps.meta.outputs.type }}
+          changelog-file: release-notes.md
+          loaders: neoforge
+          game-versions: ${{ steps.meta.outputs.minecraft }}
+          java: ${{ steps.meta.outputs.java }}

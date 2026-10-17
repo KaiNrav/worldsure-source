@@ -18,6 +18,20 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build Fabric and NeoForge jars
         run: ./gradlew build --stacktrace
+      - name: Check the release jars
+        run: |
+          set -e
+          ls fabric/build/libs neoforge/build/libs
+          fabric=$(ls fabric/build/libs/worldsure-fabric-*[0-9].jar)
+          neoforge=$(ls neoforge/build/libs/worldsure-neoforge-*[0-9].jar)
+          for jar in "$fabric" "$neoforge"; do
+            unzip -l "$jar" | grep -q assets/worldsure/icon.png
+            unzip -l "$jar" | grep -q LICENSE_worldsure
+          done
+          unzip -p "$fabric" fabric.mod.json
+          unzip -p "$neoforge" META-INF/neoforge.mods.toml
+          ! unzip -p "$fabric" fabric.mod.json | grep -F '${'
+          ! unzip -p "$neoforge" META-INF/neoforge.mods.toml | grep -F '${'
       - uses: actions/upload-artifact@v4
         with:
           name: worldsure-jars

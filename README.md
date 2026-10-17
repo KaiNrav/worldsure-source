@@ -34,10 +34,15 @@ and items of removed mods (those are still dropped by the game), item counts, an
 
 | Loader | Minecraft |
 |---|---|
-| Fabric (also runs on Quilt) | 26.3 |
+| Fabric | 26.3 |
 | NeoForge | 26.3 |
 
 1.21.1 is planned next.
+
+## Installing
+
+Put `worldsure-fabric-<version>.jar` (with Fabric API) or `worldsure-neoforge-<version>.jar` into
+`mods/`. Worldsure adds a block, so a server and the clients joining it all need it.
 
 ## Building
 
@@ -47,7 +52,7 @@ Requires JDK 25.
 ./gradlew build
 ```
 
-Jars land in `fabric/build/libs` and `neoforge/build/libs`.
+Jars land in `fabric/build/libs` and `neoforge/build/libs`, named like `worldsure-fabric-0.1.0+26.3.jar`.
 `./gradlew :common:test -PcommonOnly` runs the core tests without downloading Minecraft.
 
 ## Layout
@@ -65,3 +70,14 @@ CI builds both jars and then, for each loader, runs a real dedicated server twic
 (`.github/smoke/smoke.py`): the second run opens the world with a fake mod's blocks
 written into a chunk and checks the backup, the report, that the blocks survive a save
 and that the passport counts them.
+
+## Releasing
+
+1. Set `mod_version` (and `release_type`: `release`, `beta` or `alpha`) in `gradle.properties`.
+2. Add a `## <version>` section to `CHANGELOG.md`.
+3. Push a tag `v<version>`, e.g. `git tag v0.1.0 && git push origin v0.1.0`.
+
+The Release workflow checks the tag against `mod_version`, builds, and creates a GitHub release with
+both jars and the changelog section. To also publish to Modrinth and CurseForge, add repository
+secrets `MODRINTH_TOKEN` / `CURSEFORGE_TOKEN` and variables `MODRINTH_ID` / `CURSEFORGE_ID`
+(Settings → Secrets and variables → Actions). The store page text and icon are in `docs/`.

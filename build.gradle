@@ -2,7 +2,8 @@ subprojects {
     apply plugin: 'java'
 
     group = mod_group
-    version = mod_version
+    // The jar carries the Minecraft version too, e.g. worldsure-fabric-0.1.0+26.3.jar
+    version = "${mod_version}+${minecraft_version}"
     base.archivesName = "${mod_id}-${project.name}"
 
     repositories {
@@ -11,5 +12,11 @@ subprojects {
 
     tasks.withType(JavaCompile).configureEach {
         options.encoding = 'UTF-8'
+    }
+
+    tasks.withType(Jar).configureEach {
+        from(rootProject.file('LICENSE')) {
+            rename { "LICENSE_${mod_id}" }
+        }
     }
 }
