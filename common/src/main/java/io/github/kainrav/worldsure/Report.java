@@ -66,6 +66,20 @@ public final class Report {
         return String.join(", ", parts) + " in the world";
     }
 
+    /**
+     * The chat lines for a player who already saw the changes on the Worldsure screen: only how the
+     * backup went, which they could not see there.
+     */
+    public static List<Line> afterReview(BackupResult backup) {
+        return switch (backup.status()) {
+            case CREATED -> List.of(new Line(Kind.BACKUP_OK, "[Worldsure] Backup made before loading: " + backup.file()));
+            case FAILED -> List.of(new Line(Kind.BACKUP_FAILED, "[Worldsure] The backup FAILED: " + backup.error()
+                    + ". Quit without saving if you want to keep the world as it was."));
+            case SKIPPED -> List.of(new Line(Kind.INFO, "[Worldsure] Loaded without a backup, as chosen."));
+            case DISABLED, NOT_NEEDED -> List.of();
+        };
+    }
+
     private static void backupLine(BackupResult backup, List<Line> lines) {
         switch (backup.status()) {
             case CREATED -> lines.add(new Line(Kind.BACKUP_OK, "  A backup was made before loading: " + backup.file()));

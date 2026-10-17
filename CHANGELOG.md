@@ -5,9 +5,10 @@
 First public version, for Minecraft 26.3 on Fabric and NeoForge.
 
 - Every world keeps a passport of the mods it was played with (`<world>/worldsure/manifest.json`).
-- In single player, opening a world whose mods were removed, updated or downgraded first shows what
-  changed and how much of each removed mod is in the world, with "Back up and play",
-  "Play without backup" and Cancel.
+- In single player, opening a world whose mods changed first shows the Worldsure screen: every
+  removed, downgraded, updated and added mod as a card with how many blocks, chests or machines and
+  mobs of it the world holds, an "All mods" tab, and "Back up & play", "Play without backup" and
+  "Back". The same screen opens from a button in the pause menu, showing the backup that was made.
 - On a dedicated server the world is backed up to `backups/worldsure/` before any chunk loads.
   The 5 newest backups per world are kept (`config/worldsure.properties`).
 - Blocks of a removed mod are kept: while the mod is missing they show as an unbreakable

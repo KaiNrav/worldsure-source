@@ -4,13 +4,11 @@ import io.github.kainrav.worldsure.Report;
 import io.github.kainrav.worldsure.Worldsure;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.storage.LevelResource;
 
 import java.nio.file.Path;
-import java.util.List;
 
 /** The server lifecycle, shared by both loaders; each loader calls these from its own events. */
 public final class WorldsureMc {
@@ -53,17 +51,5 @@ public final class WorldsureMc {
             case ADDED, BACKUP_OK -> ChatFormatting.GREEN;
             case INFO -> ChatFormatting.GRAY;
         };
-    }
-
-    /** Joins report lines into one multi-line text with each line coloured by its kind. */
-    public static Component toComponent(List<Report.Line> lines) {
-        MutableComponent text = Component.empty();
-        for (int i = 0; i < lines.size(); i++) {
-            if (i > 0) {
-                text.append("\n");
-            }
-            text.append(Component.literal(lines.get(i).text().strip()).withStyle(color(lines.get(i).kind())));
-        }
-        return text;
     }
 }

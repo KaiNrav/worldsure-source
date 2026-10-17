@@ -6,16 +6,16 @@ Every world remembers which mods it was played with (its *passport*, stored in
 `<world>/worldsure/manifest.json`). When you open the world with a mod removed,
 updated or downgraded, Worldsure:
 
-1. in single player, stops before the world opens and shows what changed, with how much
-   of each removed mod is in the world. You choose: back up and play, play without a
-   backup, or go back;
+1. in single player, stops before the world opens and shows the Worldsure screen: every
+   changed mod as a card with how much of it is in the world. You choose: back up and play,
+   play without a backup, or go back. The same screen opens from the pause menu;
 2. on a server, backs the world up to `backups/worldsure/` **before any chunk loads**
    (the 5 newest copies per world are kept);
 3. keeps the blocks of a removed mod. While the mod is missing they show as a
    "Block of a removed mod" that cannot be broken, and when the chunk is saved the
    original blocks and their chests or machines are written back. Put the mod back and
    everything is where it was;
-4. writes what changed to the log, and in single player shows it in chat once you join.
+4. writes what changed to the log, and in chat tells single player players how the backup went.
 
 Counts of blocks, block entities and entities per mod are kept in
 `<world>/worldsure/index.dat` and summed into the passport. Adding a mod is reported but
@@ -58,7 +58,7 @@ Jars land in `fabric/build/libs` and `neoforge/build/libs`, named like `worldsur
 ## Layout
 
 - `common/` loader-independent logic (passport, diff, backup, report), plain Java with unit tests.
-- `shared/` Minecraft code used by both loaders: the confirmation screen, block
+- `shared/` Minecraft code used by both loaders: the Worldsure screen and pause menu button, block
   placeholders and counting mixins. 26.3 uses the same names on both loaders, so it is
   compiled into each jar.
 - `fabric/`, `neoforge/` thin entry points that register the placeholder block, hook

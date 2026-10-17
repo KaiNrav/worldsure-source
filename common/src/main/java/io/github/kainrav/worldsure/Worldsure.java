@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * The loader-independent flow. Each loader calls these hooks from its own events:
  * <ol>
- *   <li>{@link #check} on the client when the player opens a world, to show the confirmation screen;</li>
+ *   <li>{@link #review} on the client when the player opens a world, to show the Worldsure screen;</li>
  *   <li>{@link #beforeWorldLoad} when the world's server is about to start, before any chunk loads;</li>
  *   <li>{@link #afterWorldLoad} once the world has started, which writes the new passport;</li>
  *   <li>{@link #takeJoinReport} when a player joins a single player world, to show them the report;</li>
@@ -31,15 +31,13 @@ public final class Worldsure {
     /** Choices made on the confirmation screen, by world folder, consumed when that world's server starts. */
     private static final Map<Path, Report.BackupResult> decisions = new ConcurrentHashMap<>();
     private static volatile CountIndex counts = new CountIndex();
+    private static WorldReview currentReview;
 
     private Worldsure() {
     }
 
     /** What changed in a world's mods, with the counts saved for it. */
     public record Check(String worldName, ModDiff diff, Map<String, ObjectCounts> counts) {
-        public List<Report.Line> lines() {
-            return Report.changes(diff, counts);
-        }
     }
 
     /** Compares a world's passport with the installed mods; empty when it has no passport or nothing changed. */
@@ -66,13 +64,7 @@ public final class Worldsure {
 
     /** Backs a world up now, honouring the config; used by the confirmation screen and the server start. */
     public static Report.BackupResult backup(Path worldDir, Path gameDir, Path configDir) {
-        WorldsureConfig config;
-        try {
-            config = WorldsureConfig.load(configDir);
-        } catch (IOException e) {
-            LOG.error("Could not read {}; using defaults", WorldsureConfig.FILE_NAME, e);
-            config = WorldsureConfig.DEFAULT;
-        }
+        WorldsureConfig config = loadConfig(configDir);
         if (!config.autoBackup()) {
             return Report.BackupResult.DISABLED;
         }
@@ -102,11 +94,22 @@ public final class Worldsure {
     public static synchronized List<Report.Line> beforeWorldLoad(Path worldDir, Path gameDir, Path configDir,
                                                                  List<ModInfo> installed) {
         pendingReport = List.of();
+        currentReview = null;
         Report.BackupResult decided = decisions.remove(worldDir.toAbsolutePath().normalize());
         loadCounts(worldDir);
+        int keep = loadConfig(configDir).keepBackups();
+        // Read before afterWorldLoad overwrites the passport; the pause menu shows it while the world is open.
+        WorldReview review = review(worldDir, configDir, installed).orElse(null);
 
         Optional<Check> check = check(worldDir, installed);
         if (check.isEmpty()) {
+            // Either nothing changed, or the world has no passport yet.
+            currentReview = review != null
+                    ? new WorldReview(review.worldName(), review.savedAt(), review.entries(),
+                            new WorldReview.Backup(WorldReview.BackupState.NOT_NEEDED, "", keep))
+                    : new WorldReview(worldDir.getFileName().toString(), null,
+                            WorldReview.entries(installed, installed, Map.of()),
+                            new WorldReview.Backup(WorldReview.BackupState.FIRST_VISIT, "", keep));
             return List.of();
         }
         ModDiff diff = check.get().diff();
@@ -116,6 +119,10 @@ public final class Worldsure {
         } else if (diff.isRisky()) {
             backup = backup(worldDir, gameDir, configDir);
         }
+        if (review != null) {
+            currentReview = new WorldReview(review.worldName(), review.savedAt(), review.entries(),
+                    WorldReview.Backup.of(backup, keep));
+        }
         List<Report.Line> lines = Report.build(check.get().worldName(), diff, check.get().counts(), backup);
         for (Report.Line line : lines) {
             switch (line.kind()) {
@@ -123,8 +130,55 @@ public final class Worldsure {
                 default -> LOG.info(line.text());
             }
         }
-        pendingReport = List.copyOf(lines);
-        return pendingReport;
+        // A player who decided on the Worldsure screen has seen the changes; chat only needs the backup outcome.
+        pendingReport = decided != null ? Report.afterReview(backup) : List.copyOf(lines);
+        return List.copyOf(lines);
+    }
+
+    /**
+     * Compares the world's passport with the installed mods without touching anything, for the screen
+     * shown before the world opens.
+     *
+     * @return empty when the world has no passport yet or it cannot be read
+     */
+    public static Optional<WorldReview> review(Path worldDir, Path configDir, List<ModInfo> installed) {
+        WorldManifest saved;
+        try {
+            saved = WorldManifest.read(worldDir).orElse(null);
+        } catch (IOException e) {
+            LOG.error("Could not read the passport of world {}", worldDir.getFileName(), e);
+            return Optional.empty();
+        }
+        if (saved == null) {
+            return Optional.empty();
+        }
+        WorldsureConfig config = loadConfig(configDir);
+        List<WorldReview.Entry> entries = WorldReview.entries(saved.mods(), installed, saved.counts());
+        WorldReview review = new WorldReview(worldDir.getFileName().toString(), saved.savedAt(), entries, null);
+        WorldReview.BackupState state;
+        if (!review.isRisky()) {
+            state = WorldReview.BackupState.NOT_NEEDED;
+        } else if (config.autoBackup()) {
+            state = WorldReview.BackupState.WILL_BACKUP;
+        } else {
+            state = WorldReview.BackupState.DISABLED;
+        }
+        return Optional.of(new WorldReview(review.worldName(), review.savedAt(), entries,
+                new WorldReview.Backup(state, "", config.keepBackups())));
+    }
+
+    /** The review of the world that is open now; empty when none is open in this game. */
+    public static synchronized Optional<WorldReview> currentReview() {
+        return Optional.ofNullable(currentReview);
+    }
+
+    private static WorldsureConfig loadConfig(Path configDir) {
+        try {
+            return WorldsureConfig.load(configDir);
+        } catch (IOException e) {
+            LOG.error("Could not read {}; using defaults", WorldsureConfig.FILE_NAME, e);
+            return WorldsureConfig.DEFAULT;
+        }
     }
 
     private static void loadCounts(Path worldDir) {
@@ -165,6 +219,7 @@ public final class Worldsure {
     /** Stores the counts and the passport after the world's final save, and forgets an unshown report. */
     public static synchronized void onWorldClosed(Path worldDir, String loader, List<ModInfo> installed) {
         pendingReport = List.of();
+        currentReview = null;
         try {
             counts.write(worldDir);
         } catch (IOException e) {

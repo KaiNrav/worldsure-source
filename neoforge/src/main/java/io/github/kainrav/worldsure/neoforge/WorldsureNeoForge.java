@@ -7,9 +7,11 @@ import io.github.kainrav.worldsure.mc.Platform;
 import io.github.kainrav.worldsure.mc.WorldsureMc;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -36,6 +38,9 @@ public final class WorldsureNeoForge implements Platform {
                 WorldsureMc.onPlayerJoin(player, player.level().getServer());
             }
         });
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
+            WorldsureNeoForgeClient.init();
+        }
     }
 
     @Override

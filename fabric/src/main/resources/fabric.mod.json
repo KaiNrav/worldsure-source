@@ -14,7 +14,8 @@
   "icon": "assets/worldsure/icon.png",
   "environment": "*",
   "entrypoints": {
-    "main": ["io.github.kainrav.worldsure.fabric.WorldsureFabric"]
+    "main": ["io.github.kainrav.worldsure.fabric.WorldsureFabric"],
+    "client": ["io.github.kainrav.worldsure.fabric.WorldsureFabricClient"]
   },
   "mixins": ["worldsure.mixins.json"],
   "depends": {

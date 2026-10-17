@@ -9,9 +9,10 @@ mod added: blocks, chests and machines, mobs. Worldsure notices before that happ
 
 - **Remembers the mods of every world.** Each world gets a small passport listing the mods and
   versions it was last played with.
-- **Asks before opening a changed world.** In single player you see what was removed, updated or
-  downgraded, and how many blocks, chests or machines and mobs of each removed mod are in the world.
-  Choose *Back up and play*, *Play without backup* or *Cancel*.
+- **Asks before opening a changed world.** In single player a clear screen lists every mod that was
+  removed, updated, downgraded or added, with how many blocks, chests or machines and mobs of each
+  are in the world. Choose *Back up & play*, *Play without backup* or *Back*, and open the same
+  screen again any time from the pause menu.
 - **Backs up servers automatically.** On a dedicated server the world is zipped to
   `backups/worldsure/` before a single chunk loads. The 5 newest backups per world are kept.
 - **Keeps the blocks of removed mods.** While a mod is missing its blocks appear as a
