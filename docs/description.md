@@ -28,4 +28,4 @@ Removing Worldsure itself is always safe: its placeholder blocks are never saved
 - Counts only cover chunks saved while Worldsure was installed.
 - Settings: `config/worldsure.properties` (`autoBackup`, `keepBackups`).
 
-Source code and issues: https://github.com/KaiNrav/worldsure
+Source code and issues: https://github.com/KaiNrav/worldsure-source
