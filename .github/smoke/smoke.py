@@ -1,5 +1,5 @@
 """
-End-to-end check on a real dedicated server, for one loader:
+End-to-end check on a real dedicated server, for one target such as 26.3:fabric:
 1. start a fresh world and stop it: the passport must be written;
 2. pretend a mod "fakemod" was removed: list it in the passport and turn the stone of one
    chunk into fakemod:stone, the way a world looks after its mod is uninstalled;
@@ -18,16 +18,18 @@ import time
 
 import nbt
 
-LOADER = sys.argv[1]
+TARGET = sys.argv[1]
+MINECRAFT, LOADER = TARGET.split(":")
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-RUN = os.path.join(ROOT, LOADER, "run")
+RUN = os.path.join(ROOT, "versions", MINECRAFT, LOADER, "run")
+GRADLE = os.path.join(ROOT, "gradlew.bat" if os.name == "nt" else "gradlew")
 WORLD = os.path.join(RUN, "world")
 RCON_PORT = 25575
 PASSWORD = "smoke"
 
 
 def log(msg):
-    print(f"[smoke:{LOADER}] {msg}", flush=True)
+    print(f"[smoke:{TARGET}] {msg}", flush=True)
 
 
 def prepare():
@@ -62,8 +64,8 @@ def rcon(*commands):
 
 def run_server(*commands):
     """Starts the server, runs commands over RCON once it is up, stops it and returns its output."""
-    task = f":{LOADER}:runServer"
-    proc = subprocess.Popen(["./gradlew", task, "--console=plain"], cwd=ROOT, stdout=subprocess.PIPE,
+    task = f":{TARGET}:runServer"
+    proc = subprocess.Popen([GRADLE, task, f"-Ptargets={MINECRAFT}", "--console=plain"], cwd=ROOT, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True)
     lines = []
     ready = threading.Event()
@@ -79,7 +81,7 @@ def run_server(*commands):
     reader.start()
     if not ready.wait(900):
         proc.kill()
-        raise SystemExit(f"{LOADER} server did not start")
+        raise SystemExit(f"{TARGET} server did not start")
     rcon(*commands, "save-all flush", "stop")
     proc.wait(300)
     reader.join(30)

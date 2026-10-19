@@ -7,7 +7,9 @@ import io.github.kainrav.worldsure.mc.Platform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.ConfirmScreen;
+//#if >=1.20.5
 import net.minecraft.client.gui.screens.GenericMessageScreen;
+//#endif
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
@@ -43,23 +45,29 @@ public final class WorldsureClient {
         if (review.isEmpty() || !review.get().hasChanges()) {
             return false;
         }
-        Minecraft.getInstance().gui.setScreen(WorldsureScreen.beforeLoad(review.get(), new Choices(dir, open, onCancel)));
+        setScreen(WorldsureScreen.beforeLoad(review.get(), new Choices(dir, open, onCancel)));
         return true;
     }
 
     /** What the buttons of the screen before loading do. */
     record Choices(Path worldDir, Runnable open, Runnable cancel) {
         void backUpAndPlay(String worldName) {
-            Minecraft minecraft = Minecraft.getInstance();
             // Paint a message first: the copy runs on this thread and can take a while for big worlds.
-            minecraft.setScreenAndShow(new GenericMessageScreen(Component.translatable("worldsure.backing_up", worldName)));
+            Component message = Component.translatable("worldsure.backing_up", worldName);
+            //#if >=1.21.11
+            Minecraft.getInstance().setScreenAndShow(new GenericMessageScreen(message));
+            //#elif >=1.20.5
+            //$ Minecraft.getInstance().forceSetScreen(new GenericMessageScreen(message));
+            //#else
+            //$ Minecraft.getInstance().forceSetScreen(new net.minecraft.client.gui.screens.GenericDirtMessageScreen(message));
+            //#endif
             Platform platform = Platform.get();
             Report.BackupResult backup = Worldsure.backup(worldDir, platform.gameDir(), platform.configDir());
             if (backup.status() != Report.BackupResult.Status.FAILED) {
                 play(backup);
                 return;
             }
-            minecraft.gui.setScreen(new ConfirmScreen(
+            setScreen(new ConfirmScreen(
                     playAnyway -> {
                         if (playAnyway) {
                             play(backup);
@@ -80,9 +88,41 @@ public final class WorldsureClient {
         }
     }
 
+    /** Shows a screen: since 26.2 through the GUI, before that through Minecraft itself. */
+    public static void setScreen(Screen screen) {
+        //#if >=26.2
+        Minecraft.getInstance().gui.setScreen(screen);
+        //#else
+        //$ Minecraft.getInstance().setScreen(screen);
+        //#endif
+    }
+
+    /** Opens a folder in the system file manager. */
+    static void openFolder(Path dir) {
+        //#if >=26.3
+        com.mojang.blaze3d.Blaze3D.openPath(dir);
+        //#elif >=1.21.11
+        //$ net.minecraft.util.Util.getPlatform().openPath(dir);
+        //#elif >=1.20.2
+        //$ net.minecraft.Util.getPlatform().openPath(dir);
+        //#else
+        //$ net.minecraft.Util.getPlatform().openFile(dir.toFile());
+        //#endif
+    }
+
+    /** False for the bare pause screen of F3+Esc. */
+    private static boolean showsPauseMenu(PauseScreen pause) {
+        //#if >=1.20.2
+        return pause.showsPauseMenu();
+        //#else
+        //$ // 1.20.1 keeps the flag private; without the menu the screen holds only its title.
+        //$ return pause.children().size() > 1;
+        //#endif
+    }
+
     /** The button that opens the Worldsure screen from the pause menu of a single player world. */
     public static Optional<AbstractWidget> pauseMenuButton(Screen screen) {
-        if (!(screen instanceof PauseScreen pause) || !pause.showsPauseMenu()) {
+        if (!(screen instanceof PauseScreen pause) || !showsPauseMenu(pause)) {
             return Optional.empty();
         }
         Optional<WorldReview> review = Worldsure.currentReview();
@@ -96,6 +136,6 @@ public final class WorldsureClient {
         FlatButton.Style style = changes > 0 ? FlatButton.Style.WARNING : FlatButton.Style.SECONDARY;
         int width = Minecraft.getInstance().font.width(label) + 20;
         return Optional.of(new FlatButton(8, screen.height - 28, width, 20, label, style,
-                () -> Minecraft.getInstance().gui.setScreen(WorldsureScreen.inGame(review.get(), screen))));
+                () -> setScreen(WorldsureScreen.inGame(review.get(), screen))));
     }
 }

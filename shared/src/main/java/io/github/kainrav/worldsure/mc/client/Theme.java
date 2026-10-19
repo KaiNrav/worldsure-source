@@ -1,8 +1,8 @@
 package io.github.kainrav.worldsure.mc.client;
 
 import io.github.kainrav.worldsure.WorldReview;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 
 /** Colours (ARGB) and the small drawing helpers the Worldsure screen is built from. */
 final class Theme {
@@ -48,20 +48,25 @@ final class Theme {
         return Component.translatable("worldsure.status." + status.name().toLowerCase(java.util.Locale.ROOT));
     }
 
+    /** Text in a colour; the alpha of an ARGB colour is dropped. */
+    static MutableComponent colored(MutableComponent text, int color) {
+        return text.withStyle(style -> style.withColor(color & 0xFFFFFF));
+    }
+
     /** The same colour at a different opacity, 0-255. */
     static int alpha(int color, int alpha) {
         return (alpha << 24) | (color & 0xFFFFFF);
     }
 
     /** A rectangle with its corners cut by one pixel, which reads as rounded at GUI scale. */
-    static void rounded(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1, int color) {
+    static void rounded(Gfx graphics, int x0, int y0, int x1, int y1, int color) {
         graphics.fill(x0 + 1, y0, x1 - 1, y1, color);
         graphics.fill(x0, y0 + 1, x0 + 1, y1 - 1, color);
         graphics.fill(x1 - 1, y0 + 1, x1, y1 - 1, color);
     }
 
     /** A one pixel border following {@link #rounded}. */
-    static void roundedOutline(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1, int color) {
+    static void roundedOutline(Gfx graphics, int x0, int y0, int x1, int y1, int color) {
         graphics.horizontalLine(x0 + 1, x1 - 2, y0, color);
         graphics.horizontalLine(x0 + 1, x1 - 2, y1 - 1, color);
         graphics.verticalLine(x0, y0, y1 - 1, color);

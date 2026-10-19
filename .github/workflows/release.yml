@@ -1,8 +1,8 @@
 name: Release
 
 # Push a tag like v0.1.0 (it must match mod_version in gradle.properties).
-# Creates a GitHub release with both jars. If the MODRINTH_TOKEN / CURSEFORGE_TOKEN secrets and the
-# MODRINTH_ID / CURSEFORGE_ID repository variables are set, the jars are published there too.
+# Creates a GitHub release with every jar. If the MODRINTH_TOKEN / CURSEFORGE_TOKEN secrets and the
+# MODRINTH_ID / CURSEFORGE_ID repository variables are set, each jar is published there too.
 
 on:
   push:
@@ -14,15 +14,18 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-      CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      type: ${{ steps.meta.outputs.type }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 25
+          java-version: |
+            17
+            21
+            25
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Read version and changelog
@@ -42,13 +45,28 @@ jobs:
           fi
           {
             echo "version=${version}"
-            echo "minecraft=$(prop minecraft_version)"
-            echo "java=$(prop java_version)"
             echo "type=$(prop release_type)"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build and test
         run: ./gradlew build --stacktrace
+
+      - name: Collect the jars
+        run: |
+          mkdir dist
+          for jar in versions/*/*/build/libs/worldsure-*.jar; do
+            case "$jar" in *-sources.jar|*-dev.jar|*-slim.jar|*-all.jar) continue ;; esac
+            cp "$jar" dist/
+          done
+          ls dist
+          test "$(ls dist | wc -l)" -eq 12
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: |
+            dist/
+            release-notes.md
 
       - name: GitHub release
         uses: softprops/action-gh-release@v2
@@ -56,11 +74,39 @@ jobs:
           name: Worldsure ${{ steps.meta.outputs.version }}
           body_path: release-notes.md
           prerelease: ${{ steps.meta.outputs.type != 'release' }}
-          files: |
-            fabric/build/libs/worldsure-fabric-*[0-9].jar
-            neoforge/build/libs/worldsure-neoforge-*[0-9].jar
+          files: dist/*.jar
 
-      - name: Publish Fabric to Modrinth and CurseForge
+  publish:
+    # One Modrinth / CurseForge version per jar.
+    needs: release
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - { minecraft: '26.3', loader: fabric, java: 25, games: '26.3' }
+          - { minecraft: '26.3', loader: neoforge, java: 25, games: '26.3' }
+          - { minecraft: '26.2', loader: fabric, java: 25, games: '26.2' }
+          - { minecraft: '26.2', loader: neoforge, java: 25, games: '26.2' }
+          - { minecraft: '26.1.2', loader: fabric, java: 25, games: "26.1\n26.1.1\n26.1.2" }
+          - { minecraft: '26.1.2', loader: neoforge, java: 25, games: "26.1\n26.1.1\n26.1.2" }
+          - { minecraft: '1.21.11', loader: fabric, java: 21, games: '1.21.11' }
+          - { minecraft: '1.21.11', loader: neoforge, java: 21, games: '1.21.11' }
+          - { minecraft: '1.21.1', loader: fabric, java: 21, games: "1.21\n1.21.1" }
+          - { minecraft: '1.21.1', loader: neoforge, java: 21, games: "1.21\n1.21.1" }
+          - { minecraft: '1.20.1', loader: fabric, java: 17, games: '1.20.1' }
+          - { minecraft: '1.20.1', loader: forge, java: 17, games: '1.20.1' }
+    env:
+      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+      CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+    steps:
+      - uses: actions/download-artifact@v4
+        if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != ''
+        with:
+          name: release
+
+      - name: Publish to Modrinth and CurseForge
         if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != ''
         uses: Kir-Antipov/mc-publish@v3.3
         with:
@@ -68,29 +114,12 @@ jobs:
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           curseforge-id: ${{ vars.CURSEFORGE_ID }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-          files: fabric/build/libs/worldsure-fabric-*[0-9].jar
-          name: Worldsure ${{ steps.meta.outputs.version }} (Fabric)
-          version: ${{ steps.meta.outputs.version }}+fabric
-          version-type: ${{ steps.meta.outputs.type }}
+          files: dist/worldsure-${{ matrix.loader }}-${{ needs.release.outputs.version }}+${{ matrix.minecraft }}.jar
+          name: Worldsure ${{ needs.release.outputs.version }} (${{ matrix.loader }} ${{ matrix.minecraft }})
+          version: ${{ needs.release.outputs.version }}+${{ matrix.minecraft }}-${{ matrix.loader }}
+          version-type: ${{ needs.release.outputs.type }}
           changelog-file: release-notes.md
-          loaders: fabric
-          game-versions: ${{ steps.meta.outputs.minecraft }}
-          java: ${{ steps.meta.outputs.java }}
-          dependencies: fabric-api(required)
-
-      - name: Publish NeoForge to Modrinth and CurseForge
-        if: env.MODRINTH_TOKEN != '' || env.CURSEFORGE_TOKEN != ''
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: ${{ vars.MODRINTH_ID }}
-          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-          curseforge-id: ${{ vars.CURSEFORGE_ID }}
-          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-          files: neoforge/build/libs/worldsure-neoforge-*[0-9].jar
-          name: Worldsure ${{ steps.meta.outputs.version }} (NeoForge)
-          version: ${{ steps.meta.outputs.version }}+neoforge
-          version-type: ${{ steps.meta.outputs.type }}
-          changelog-file: release-notes.md
-          loaders: neoforge
-          game-versions: ${{ steps.meta.outputs.minecraft }}
-          java: ${{ steps.meta.outputs.java }}
+          loaders: ${{ matrix.loader }}
+          game-versions: ${{ matrix.games }}
+          java: ${{ matrix.java }}
+          dependencies: ${{ matrix.loader == 'fabric' && 'fabric-api(required)' || '' }}

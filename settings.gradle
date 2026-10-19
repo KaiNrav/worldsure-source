@@ -13,13 +13,44 @@ pluginManagement {
     }
 }
 
+plugins {
+    // Downloads a JDK a target needs when none is installed (Java 17 for 1.20.1).
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
 rootProject.name = 'worldsure'
 
 include 'common'
 
+// Every Minecraft version Worldsure is built for, with its loaders. Each one is a project
+// :<version>:<loader> in versions/<version>/<loader>; its settings live in
+// versions/<version>/gradle.properties and its build in gradle/<loader>.gradle.
+def targets = [
+        '26.3'   : ['fabric', 'neoforge'],
+        '26.2'   : ['fabric', 'neoforge'],
+        '26.1.2' : ['fabric', 'neoforge'],
+        '1.21.11': ['fabric', 'neoforge'],
+        '1.21.1' : ['fabric', 'neoforge'],
+        '1.20.1' : ['fabric', 'forge'],
+]
+
 // `-PcommonOnly` builds and tests the loader-independent core without
 // downloading Minecraft, which is handy offline and in quick CI checks.
+// `-Ptargets=26.3,1.21.1` builds only those Minecraft versions.
 if (!providers.gradleProperty('commonOnly').isPresent()) {
-    include 'fabric'
-    include 'neoforge'
+    def only = providers.gradleProperty('targets').map { it.split(',')*.trim() as Set }.getOrNull()
+    targets.each { version, loaders ->
+        if (only != null && !only.contains(version)) {
+            return
+        }
+        include version
+        project(":${version}").projectDir = file("versions/${version}")
+        loaders.each { loader ->
+            // Holds only build output and run/, so git keeps no folder for it.
+            def dir = file("versions/${version}/${loader}")
+            dir.mkdirs()
+            include "${version}:${loader}"
+            project(":${version}:${loader}").projectDir = dir
+        }
+    }
 }

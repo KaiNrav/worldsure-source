@@ -14,52 +14,73 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 25
+          # 17 for 1.20.1, 21 for 1.21.x, 25 for 26.x and for Gradle itself (the last one is the default)
+          java-version: |
+            17
+            21
+            25
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build Fabric and NeoForge jars
+      - name: Build every jar
         run: ./gradlew build --stacktrace
       - name: Check the release jars
         run: |
           set -e
-          ls fabric/build/libs neoforge/build/libs
-          fabric=$(ls fabric/build/libs/worldsure-fabric-*[0-9].jar)
-          neoforge=$(ls neoforge/build/libs/worldsure-neoforge-*[0-9].jar)
-          for jar in "$fabric" "$neoforge"; do
+          jars=$(ls versions/*/*/build/libs/worldsure-*.jar | grep -vE -- '-(sources|dev|slim|all)\.jar$')
+          echo "$jars"
+          test "$(echo "$jars" | wc -l)" -eq 12
+          for jar in $jars; do
             unzip -l "$jar" | grep -q assets/worldsure/icon.png
             unzip -l "$jar" | grep -q LICENSE_worldsure
+            for meta in fabric.mod.json META-INF/neoforge.mods.toml META-INF/mods.toml worldsure.mixins.json; do
+              if unzip -l "$jar" | grep -q " $meta$"; then
+                ! unzip -p "$jar" "$meta" | grep -F '${'
+              fi
+            done
           done
-          unzip -p "$fabric" fabric.mod.json
-          unzip -p "$neoforge" META-INF/neoforge.mods.toml
-          ! unzip -p "$fabric" fabric.mod.json | grep -F '${'
-          ! unzip -p "$neoforge" META-INF/neoforge.mods.toml | grep -F '${'
       - uses: actions/upload-artifact@v4
         with:
           name: worldsure-jars
-          path: |
-            fabric/build/libs/*.jar
-            neoforge/build/libs/*.jar
+          path: versions/*/*/build/libs/*.jar
 
   smoke:
-    # Runs a real dedicated server per loader: passport, backup and placeholder round trip.
+    # Runs a real dedicated server per target: passport, backup and placeholder round trip.
     needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        loader: [fabric, neoforge]
+        target:
+          - 26.3:fabric
+          - 26.3:neoforge
+          - 26.2:fabric
+          - 26.2:neoforge
+          - 26.1.2:fabric
+          - 26.1.2:neoforge
+          - 1.21.11:fabric
+          - 1.21.11:neoforge
+          - 1.21.1:fabric
+          - 1.21.1:neoforge
+          - 1.20.1:fabric
+          - 1.20.1:forge
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 25
+          java-version: |
+            17
+            21
+            25
       - uses: gradle/actions/setup-gradle@v4
       - name: Server smoke test
         timeout-minutes: 30
-        run: python3 .github/smoke/smoke.py ${{ matrix.loader }}
+        run: python3 .github/smoke/smoke.py ${{ matrix.target }}
+      - name: Name the logs
+        if: always()
+        run: echo "LOGS=smoke-$(echo '${{ matrix.target }}' | tr ':' '-')-logs" >> "$GITHUB_ENV"
       - name: Upload server logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: smoke-${{ matrix.loader }}-logs
-          path: ${{ matrix.loader }}/run/logs/
+          name: ${{ env.LOGS }}
+          path: versions/*/*/run/logs/

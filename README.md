@@ -24,49 +24,70 @@ Worldsure itself is always safe.
 
 Settings live in `config/worldsure.properties` (`autoBackup`, `keepBackups`).
 
-## Status
+## Not done yet
 
-Prototype of stages 1 and 2 from the design. Not yet done: placeholders for entities
-and items of removed mods (those are still dropped by the game), item counts, and
-1.21.1. Counts cover chunks saved while Worldsure was installed.
+Placeholders for entities and items of removed mods (those are still dropped by the game) and
+item counts. Counts cover chunks saved while Worldsure was installed.
 
 ## Supported versions
 
-| Loader | Minecraft |
+| Minecraft | Loaders |
 |---|---|
-| Fabric | 26.3 |
-| NeoForge | 26.3 |
-
-1.21.1 is planned next.
+| 26.3 | Fabric, NeoForge |
+| 26.2 | Fabric, NeoForge |
+| 26.1 – 26.1.2 | Fabric, NeoForge |
+| 1.21.11 | Fabric, NeoForge |
+| 1.21 – 1.21.1 | Fabric, NeoForge |
+| 1.20.1 | Fabric, Forge |
 
 ## Installing
 
-Put `worldsure-fabric-<version>.jar` (with Fabric API) or `worldsure-neoforge-<version>.jar` into
-`mods/`. Worldsure adds a block, so a server and the clients joining it all need it.
+Put the jar for your loader and Minecraft version, e.g. `worldsure-fabric-0.1.0+1.21.1.jar` (with
+Fabric API), `worldsure-neoforge-0.1.0+26.3.jar` or `worldsure-forge-0.1.0+1.20.1.jar`, into `mods/`. Worldsure adds a block, so a server and the clients joining it all need it.
 
 ## Building
 
-Requires JDK 25.
+Gradle runs on JDK 25 (`gradle/gradle-daemon-jvm.properties`); the JDKs 17 and 21 that the
+1.20.1 and 1.21.x targets compile with are found locally or downloaded.
 
 ```
 ./gradlew build
 ```
 
-Jars land in `fabric/build/libs` and `neoforge/build/libs`, named like `worldsure-fabric-0.1.0+26.3.jar`.
+builds all twelve jars into `versions/<minecraft>/<loader>/build/libs`, named like
+`worldsure-fabric-0.1.0+26.3.jar`. `-Ptargets=26.3,1.21.1` builds only those Minecraft versions;
 `./gradlew :common:test -PcommonOnly` runs the core tests without downloading Minecraft.
+`./gradlew :1.21.1:fabric:runClient` (or `runServer`) starts the game with the mod; add
+`-PquickPlay=<world>` to open a single player world right away.
 
 ## Layout
 
 - `common/` loader-independent logic (passport, diff, backup, report), plain Java with unit tests.
-- `shared/` Minecraft code used by both loaders: the Worldsure screen and pause menu button, block
-  placeholders and counting mixins. 26.3 uses the same names on both loaders, so it is
+- `shared/` Minecraft code used by every loader: the Worldsure screen and pause menu button, block
+  placeholders and counting mixins. All targets use the official Mojang names, so it is
   compiled into each jar.
-- `fabric/`, `neoforge/` thin entry points that register the placeholder block, hook
-  server start and player join, and compile the common and shared sources into their jar.
+- `fabric/`, `neoforge/`, `forge/` thin entry points that register the placeholder block and hook
+  server start and player join.
+- `versions/<minecraft>/gradle.properties` the Minecraft, loader and Java versions of a target;
+  `gradle/` the build each loader shares (`settings.gradle` lists the targets).
+
+The sources are written for the newest Minecraft. Where an older version needs other code, the
+build's preprocessor picks it from blocks like
+
+```java
+//#if >=1.21.2
+newer code
+//#else
+//$ older code, commented out
+//#endif
+```
+
+so an IDE reads the files as plain Java for 26.3. Conditions compare the Minecraft version
+(`>=`, `<`, `==`, ...; several are combined with spaces); `//#elif` and nesting work.
 
 ## Tests
 
-CI builds both jars and then, for each loader, runs a real dedicated server twice
+CI builds every jar and then, for each target, runs a real dedicated server twice
 (`.github/smoke/smoke.py`): the second run opens the world with a fake mod's blocks
 written into a chunk and checks the backup, the report, that the blocks survive a save
 and that the passport counts them.
@@ -78,6 +99,6 @@ and that the passport counts them.
 3. Push a tag `v<version>`, e.g. `git tag v0.1.0 && git push origin v0.1.0`.
 
 The Release workflow checks the tag against `mod_version`, builds, and creates a GitHub release with
-both jars and the changelog section. To also publish to Modrinth and CurseForge, add repository
+all twelve jars and the changelog section. To also publish to Modrinth and CurseForge, add repository
 secrets `MODRINTH_TOKEN` / `CURSEFORGE_TOKEN` and variables `MODRINTH_ID` / `CURSEFORGE_ID`
 (Settings → Secrets and variables → Actions). The store page text and icon are in `docs/`.

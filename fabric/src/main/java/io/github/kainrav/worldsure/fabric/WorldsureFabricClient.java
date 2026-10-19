@@ -9,6 +9,10 @@ public final class WorldsureFabricClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) ->
+                //#if >=26.1
                 WorldsureClient.pauseMenuButton(screen).ifPresent(Screens.getWidgets(screen)::add));
+                //#else
+                //$ WorldsureClient.pauseMenuButton(screen).ifPresent(Screens.getButtons(screen)::add));
+                //#endif
     }
 }

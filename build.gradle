@@ -1,11 +1,124 @@
+plugins {
+    // Applied per target by gradle/<loader>.gradle; declared here so they share one classpath.
+    id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}" apply false
+    id 'net.neoforged.moddev' version "${moddev_version}" apply false
+    id 'net.neoforged.moddev.legacyforge' version "${moddev_version}" apply false
+}
+
+/**
+ * Compares Minecraft versions part by part as numbers: 1.20.1 < 1.21.11 < 26.1.2.
+ */
+static int compareMinecraft(String a, String b) {
+    def x = a.tokenize('.')*.toInteger()
+    def y = b.tokenize('.')*.toInteger()
+    for (int i = 0; i < Math.max(x.size(), y.size()); i++) {
+        int c = (i < x.size() ? x[i] : 0) <=> (i < y.size() ? y[i] : 0)
+        if (c != 0) {
+            return c
+        }
+    }
+    return 0
+}
+
+/**
+ * Whether a condition like {@code >=1.21.2 <1.21.9} holds for a Minecraft version. Every
+ * comparison must hold; a bare version means {@code ==}.
+ */
+static boolean conditionHolds(String condition, String minecraft) {
+    condition.trim().split(/\s+/).every { term ->
+        def m = term =~ /^(>=|<=|>|<|==|!=)?([0-9.]+)$/
+        if (!m.matches()) {
+            throw new GradleException("Unknown preprocessor condition '${term}'")
+        }
+        int c = compareMinecraft(minecraft, m.group(2))
+        switch (m.group(1) ?: '==') {
+            case '>=': return c >= 0
+            case '<=': return c <= 0
+            case '>': return c > 0
+            case '<': return c < 0
+            case '!=': return c != 0
+            default: return c == 0
+        }
+    }
+}
+
+/**
+ * The source preprocessor. Sources are kept as they compile for the newest Minecraft, so an IDE
+ * reads them as plain Java; code for other versions sits in blocks
+ *
+ * <pre>
+ * //#if &lt;1.21.2
+ * //$ code for older versions, commented out
+ * //#else
+ * code for 1.21.2 and newer
+ * //#endif
+ * </pre>
+ *
+ * For each target the active branch is uncommented ({@code //$ } removed) and every other branch
+ * commented out. {@code //#elif} is supported and blocks nest. Line numbers do not change.
+ */
+static String preprocess(String text, String minecraft, String file) {
+    List<String> out = []
+    // Each open block: [parent active, a branch was taken, this branch active]
+    List<List<Boolean>> stack = []
+    boolean active = true
+    text.split('\n', -1).eachWithIndex { String line, int index ->
+        def directive = line =~ /^\s*\/\/#(if|elif|else|endif)\b(.*)$/
+        if (directive.matches()) {
+            String kind = directive.group(1)
+            String condition = directive.group(2).trim()
+            if (kind != 'if' && stack.isEmpty()) {
+                throw new GradleException("${file}:${index + 1}: //#${kind} without //#if")
+            }
+            switch (kind) {
+                case 'if':
+                    boolean holds = conditionHolds(condition, minecraft)
+                    stack.add([active, holds, active && holds])
+                    break
+                case 'elif':
+                    def top = stack.removeLast()
+                    boolean holds = !top[1] && conditionHolds(condition, minecraft)
+                    stack.add([top[0], top[1] || holds, top[0] && holds])
+                    break
+                case 'else':
+                    def top = stack.removeLast()
+                    stack.add([top[0], true, top[0] && !top[1]])
+                    break
+                default:
+                    stack.removeLast()
+            }
+            active = stack.isEmpty() ? true : stack.last()[2]
+            out << line
+            return
+        }
+        def commented = line =~ /^(\s*)\/\/\$ ?(.*)$/
+        if (active) {
+            out << (commented.matches() ? commented.group(1) + commented.group(2) : line)
+        } else if (commented.matches() || line.trim().isEmpty()) {
+            out << line
+        } else {
+            String indent = line.takeWhile { Character.isWhitespace(it as char) }
+            out << indent + '//$ ' + line.substring(indent.length())
+        }
+    }
+    if (!stack.isEmpty()) {
+        throw new GradleException("${file}: //#if without //#endif")
+    }
+    return out.join('\n')
+}
+
+ext.compareMinecraft = this.&compareMinecraft
+ext.preprocess = this.&preprocess
+
 subprojects {
+    // :<minecraft> only groups the loaders of one Minecraft version.
+    if (name ==~ /[0-9.]+/) {
+        return
+    }
     apply plugin: 'java'
 
     group = mod_group
-    // The jar carries the Minecraft version too, e.g. worldsure-fabric-0.1.0+26.3.jar
-    version = "${mod_version}+${minecraft_version}"
-    base.archivesName = "${mod_id}-${project.name}"
-
     repositories {
         mavenCentral()
     }
@@ -18,5 +131,14 @@ subprojects {
         from(rootProject.file('LICENSE')) {
             rename { "LICENSE_${mod_id}" }
         }
+    }
+
+    // Loader projects (:<minecraft>:<loader>) get their build from gradle/<loader>.gradle.
+    if (parent.name ==~ /[0-9.]+/) {
+        // The jar carries the Minecraft version too, e.g. worldsure-fabric-0.1.0+26.3.jar
+        version = "${mod_version}+${minecraft_version}"
+        base.archivesName = "${mod_id}-${project.name}"
+        apply from: rootProject.file('gradle/target.gradle')
+        apply from: rootProject.file("gradle/${project.name}.gradle")
     }
 }

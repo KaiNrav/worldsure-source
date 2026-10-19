@@ -1,0 +1,27 @@
+// NeoForge, 1.21.1 and newer.
+apply plugin: 'net.neoforged.moddev'
+
+neoForge {
+    version = neoforge_version
+
+    runs {
+        client {
+            client()
+            // -PquickPlay=<world> opens that single player world right away.
+            if (project.hasProperty('quickPlay')) {
+                programArguments.addAll('--quickPlaySingleplayer', project.property('quickPlay') as String)
+            }
+        }
+        server {
+            server()
+            gameDirectory = project.file('run')
+            programArgument '--nogui'
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
+}

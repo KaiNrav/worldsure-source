@@ -1,0 +1,70 @@
+// Shared by every loader project :<minecraft>:<loader>. Its sources are common/, shared/ and
+// <loader>/ at the root, run through the preprocessor (see the root build.gradle) for this
+// Minecraft version.
+import groovy.io.FileType
+
+def minecraft = minecraft_version as String
+def javaVersion = java_version as int
+def loader = project.name
+def sourceDirs = ['common', 'shared', loader].collect { rootProject.file("${it}/src/main/java") }
+def preprocessed = layout.buildDirectory.dir('preprocessed/java')
+
+def preprocessJava = tasks.register('preprocessJava') {
+    description = "Writes the sources as they compile for Minecraft ${minecraft}."
+    inputs.files(sourceDirs).withPropertyName('sources')
+    inputs.property('minecraft', minecraft)
+    outputs.dir(preprocessed)
+    doLast {
+        def out = preprocessed.get().asFile
+        out.deleteDir()
+        sourceDirs.findAll { it.isDirectory() }.each { dir ->
+            dir.eachFileRecurse(FileType.FILES) { file ->
+                def target = new File(out, dir.toPath().relativize(file.toPath()).toString())
+                target.parentFile.mkdirs()
+                if (file.name.endsWith('.java')) {
+                    def text = file.getText('UTF-8').replace('\r\n', '\n')
+                    target.setText(rootProject.ext.preprocess(text, minecraft, file.path), 'UTF-8')
+                } else {
+                    target.bytes = file.bytes
+                }
+            }
+        }
+    }
+}
+
+sourceSets.main.java.setSrcDirs([])
+sourceSets.main.java.srcDir(preprocessJava)
+sourceSets.main.resources.setSrcDirs(['common', 'shared', loader].collect { rootProject.file("${it}/src/main/resources") })
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(javaVersion)
+tasks.withType(JavaCompile).configureEach {
+    options.release = javaVersion
+}
+
+def modern = rootProject.ext.compareMinecraft(minecraft, '26') >= 0
+def props = [
+        version          : mod_version,
+        mod_id           : mod_id,
+        mod_name         : mod_name,
+        mod_description  : mod_description,
+        mod_license      : mod_license,
+        minecraft_version: minecraft,
+        java_version     : javaVersion,
+        // Mixin 0.8 knows Java levels up to 21; newer bytecode loads fine under JAVA_21.
+        mixin_java       : Math.min(javaVersion, 21),
+        // Forge in production runs on SRG names, so its mixins need a reference map.
+        mixin_refmap     : loader == 'forge' ? "\"refmap\": \"${mod_id}.refmap.json\"," : '',
+        fabric_minecraft : findProperty('fabric_minecraft') ?: '',
+        forge_minecraft  : findProperty('forge_minecraft') ?: '',
+        fabric_loader_min: fabric_loader_min,
+        neoforge_min     : findProperty('neoforge_min') ?: '',
+        forge_min        : findProperty('forge_min') ?: '',
+        // NeoForge for 26.x reads a square iconFile; older versions only know logoFile.
+        icon_key         : modern ? 'iconFile' : 'logoFile',
+]
+processResources {
+    inputs.properties props
+    filesMatching(['fabric.mod.json', 'META-INF/neoforge.mods.toml', 'META-INF/mods.toml', 'pack.mcmeta', '*.mixins.json']) {
+        expand props
+    }
+}

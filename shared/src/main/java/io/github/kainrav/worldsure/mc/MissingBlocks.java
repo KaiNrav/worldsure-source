@@ -9,7 +9,11 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.LongArrayTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+//#if >=1.21.11
 import net.minecraft.resources.Identifier;
+//#else
+//$ import net.minecraft.resources.ResourceLocation;
+//#endif
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
@@ -30,11 +34,15 @@ import java.util.function.Predicate;
  * its block entity, so the file on disk never contains a placeholder.
  */
 public final class MissingBlocks {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath(Worldsure.MOD_ID, "missing_block");
-    public static final ResourceKey<Block> KEY = ResourceKey.create(Registries.BLOCK, ID);
-    private static final String PLACEHOLDER_NAME = ID.toString();
-    /** A block with a single state is stored as its bare id; others as {id, properties}. */
-    private static final Tag PLACEHOLDER = StringTag.valueOf(PLACEHOLDER_NAME);
+    //#if >=1.21.11
+    public static final ResourceKey<Block> KEY = ResourceKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(Worldsure.MOD_ID, "missing_block"));
+    //#elif >=1.21
+    //$ public static final ResourceKey<Block> KEY = ResourceKey.create(Registries.BLOCK, ResourceLocation.fromNamespaceAndPath(Worldsure.MOD_ID, "missing_block"));
+    //#else
+    //$ public static final ResourceKey<Block> KEY = ResourceKey.create(Registries.BLOCK, new ResourceLocation(Worldsure.MOD_ID, "missing_block"));
+    //#endif
+    private static final String PLACEHOLDER_NAME = Worldsure.MOD_ID + ":missing_block";
+    private static final Tag PLACEHOLDER = placeholder();
 
     /** dimension + chunk -> what the chunk held before placeholders went in */
     private static final Map<String, Stash> STASHES = new ConcurrentHashMap<>();
@@ -47,10 +55,24 @@ public final class MissingBlocks {
 
     public static Block create() {
         return new Block(BlockBehaviour.Properties.of()
+                //#if >=1.21.2
                 .setId(KEY)
+                //#endif
                 // Unbreakable and blast-proof, so the stored block is not lost by accident.
                 .strength(-1.0F, 3_600_000.0F)
                 .noLootTable());
+    }
+
+    /** The palette entry of the placeholder block, which has a single state. */
+    private static Tag placeholder() {
+        //#if >=26.3
+        // Since 26.3 a block with a single state is stored as its bare id; others as {id, properties}.
+        return StringTag.valueOf(PLACEHOLDER_NAME);
+        //#else
+        //$ CompoundTag entry = new CompoundTag();
+        //$ entry.putString("Name", PLACEHOLDER_NAME);
+        //$ return entry;
+        //#endif
     }
 
     private static String key(String dimension, long chunk) {
@@ -64,17 +86,26 @@ public final class MissingBlocks {
     /** The block id of a palette entry: a bare id string, or a compound with "id" (older worlds used "Name"). */
     static String blockId(Tag entry) {
         if (entry instanceof StringTag string) {
-            return string.value();
+            return Nbt.value(string);
         }
         if (entry instanceof CompoundTag compound) {
-            return compound.getString("id").or(() -> compound.getString("Name")).orElse("");
+            return Nbt.string(compound, "id").or(() -> Nbt.string(compound, "Name")).orElse("");
         }
         return "";
     }
 
     private static boolean isMissing(Tag entry) {
-        Identifier id = Identifier.tryParse(blockId(entry));
-        return id != null && !BuiltInRegistries.BLOCK.containsKey(id);
+        return isUnknown(blockId(entry), true);
+    }
+
+    /** Whether an id parses but names no registered block (or block entity type). */
+    private static boolean isUnknown(String text, boolean block) {
+        //#if >=1.21.11
+        Identifier id = Identifier.tryParse(text);
+        //#else
+        //$ ResourceLocation id = ResourceLocation.tryParse(text);
+        //#endif
+        return id != null && !(block ? BuiltInRegistries.BLOCK : BuiltInRegistries.BLOCK_ENTITY_TYPE).containsKey(id);
     }
 
     private static boolean isPlaceholder(Tag entry) {
@@ -82,16 +113,15 @@ public final class MissingBlocks {
     }
 
     private static boolean isMissingBlockEntity(CompoundTag tag) {
-        Identifier id = Identifier.tryParse(tag.getStringOr("id", ""));
-        return id != null && !BuiltInRegistries.BLOCK_ENTITY_TYPE.containsKey(id);
+        return isUnknown(Nbt.stringOrEmpty(tag, "id"), false);
     }
 
     private static List<Tag> palette(CompoundTag blockStates) {
-        return new ArrayList<>(blockStates.getListOrEmpty("palette"));
+        return new ArrayList<>(Nbt.list(blockStates, "palette"));
     }
 
     private static PackedSection<Tag> read(CompoundTag blockStates) {
-        return PackedSection.unpack(palette(blockStates), blockStates.getLongArray("data").orElse(null), globalBits());
+        return PackedSection.unpack(palette(blockStates), Nbt.longArray(blockStates, "data").orElse(null), globalBits());
     }
 
     private static void store(CompoundTag blockStates, PackedSection<Tag> section) {
@@ -112,16 +142,16 @@ public final class MissingBlocks {
      * @return a cleaned copy of the chunk tag, or {@code null} if it holds nothing missing
      */
     public static CompoundTag replaceMissing(String dimension, CompoundTag chunkTag) {
-        ListTag sections = chunkTag.getListOrEmpty("sections");
+        ListTag sections = Nbt.list(chunkTag, "sections");
         Map<Integer, PackedSection<Tag>> originals = new HashMap<>();
         for (int i = 0; i < sections.size(); i++) {
-            CompoundTag section = sections.getCompoundOrEmpty(i);
-            CompoundTag blockStates = section.getCompound("block_states").orElse(null);
+            CompoundTag section = Nbt.compoundAt(sections, i);
+            CompoundTag blockStates = Nbt.compound(section, "block_states").orElse(null);
             if (blockStates != null && palette(blockStates).stream().anyMatch(MissingBlocks::isMissing)) {
-                originals.put((int) section.getByteOr("Y", (byte) 0), read(blockStates));
+                originals.put((int) Nbt.byteOr(section, "Y", (byte) 0), read(blockStates));
             }
         }
-        List<CompoundTag> missingEntities = chunkTag.getListOrEmpty("block_entities").compoundStream()
+        List<CompoundTag> missingEntities = Nbt.compounds(Nbt.list(chunkTag, "block_entities"))
                 .filter(MissingBlocks::isMissingBlockEntity)
                 .toList();
         if (originals.isEmpty() && missingEntities.isEmpty()) {
@@ -129,17 +159,17 @@ public final class MissingBlocks {
         }
 
         CompoundTag copy = chunkTag.copy();
-        ListTag copiedSections = copy.getListOrEmpty("sections");
+        ListTag copiedSections = Nbt.list(copy, "sections");
         for (int i = 0; i < copiedSections.size(); i++) {
-            CompoundTag section = copiedSections.getCompoundOrEmpty(i);
-            PackedSection<Tag> original = originals.get((int) section.getByteOr("Y", (byte) 0));
+            CompoundTag section = Nbt.compoundAt(copiedSections, i);
+            PackedSection<Tag> original = originals.get((int) Nbt.byteOr(section, "Y", (byte) 0));
             if (original != null) {
-                store(section.getCompoundOrEmpty("block_states"), original.replace(MissingBlocks::isMissing, PLACEHOLDER));
+                store(Nbt.compound(section, "block_states").orElseThrow(), original.replace(MissingBlocks::isMissing, PLACEHOLDER));
             }
         }
         if (!missingEntities.isEmpty()) {
             ListTag kept = new ListTag();
-            copy.getListOrEmpty("block_entities").compoundStream()
+            Nbt.compounds(Nbt.list(copy, "block_entities"))
                     .filter(Predicate.not(MissingBlocks::isMissingBlockEntity))
                     .forEach(kept::add);
             copy.put("block_entities", kept);
@@ -153,7 +183,16 @@ public final class MissingBlocks {
     }
 
     private static long chunkKey(CompoundTag chunkTag) {
-        return ChunkPos.pack(chunkTag.getIntOr("xPos", 0), chunkTag.getIntOr("zPos", 0));
+        return chunkKey(Nbt.intOr(chunkTag, "xPos", 0), Nbt.intOr(chunkTag, "zPos", 0));
+    }
+
+    /** The long a chunk position packs into, as the game itself keys chunks. */
+    public static long chunkKey(int x, int z) {
+        //#if >=26.1
+        return ChunkPos.pack(x, z);
+        //#else
+        //$ return ChunkPos.asLong(x, z);
+        //#endif
     }
 
     /** Puts the original blocks and block entities back into a chunk tag about to be written. */
@@ -165,12 +204,12 @@ public final class MissingBlocks {
         }
         Map<Integer, boolean[]> placeholderPositions = new HashMap<>();
         Map<Integer, PackedSection<Tag>> stillNeeded = new HashMap<>();
-        ListTag sections = chunkTag.getListOrEmpty("sections");
+        ListTag sections = Nbt.list(chunkTag, "sections");
         for (int i = 0; i < sections.size(); i++) {
-            CompoundTag section = sections.getCompoundOrEmpty(i);
-            int y = section.getByteOr("Y", (byte) 0);
+            CompoundTag section = Nbt.compoundAt(sections, i);
+            int y = Nbt.byteOr(section, "Y", (byte) 0);
             PackedSection<Tag> original = stash.sections().get(y);
-            CompoundTag blockStates = section.getCompound("block_states").orElse(null);
+            CompoundTag blockStates = Nbt.compound(section, "block_states").orElse(null);
             if (original == null || blockStates == null) {
                 continue;
             }
@@ -188,11 +227,11 @@ public final class MissingBlocks {
         }
 
         List<CompoundTag> entitiesStillNeeded = new ArrayList<>();
-        ListTag blockEntities = chunkTag.getListOrEmpty("block_entities");
+        ListTag blockEntities = Nbt.list(chunkTag, "block_entities");
         for (CompoundTag entity : stash.blockEntities()) {
-            int x = entity.getIntOr("x", 0);
-            int y = entity.getIntOr("y", 0);
-            int z = entity.getIntOr("z", 0);
+            int x = Nbt.intOr(entity, "x", 0);
+            int y = Nbt.intOr(entity, "y", 0);
+            int z = Nbt.intOr(entity, "z", 0);
             boolean[] positions = placeholderPositions.get(y >> 4);
             if (positions != null && positions[((y & 15) << 8) | ((z & 15) << 4) | (x & 15)]) {
                 blockEntities.add(entity.copy());
@@ -214,17 +253,17 @@ public final class MissingBlocks {
     /** Counts blocks and block entities per namespace in a chunk tag as it goes to disk. */
     public static Map<String, long[]> count(CompoundTag chunkTag) {
         Map<String, long[]> counts = new HashMap<>();
-        ListTag sections = chunkTag.getListOrEmpty("sections");
+        ListTag sections = Nbt.list(chunkTag, "sections");
         for (int i = 0; i < sections.size(); i++) {
-            CompoundTag blockStates = sections.getCompoundOrEmpty(i).getCompound("block_states").orElse(null);
+            CompoundTag blockStates = Nbt.compound(Nbt.compoundAt(sections, i), "block_states").orElse(null);
             if (blockStates == null) {
                 continue;
             }
             read(blockStates).countBy(entry -> namespace(blockId(entry)))
                     .forEach((namespace, n) -> counts.computeIfAbsent(namespace, k -> new long[2])[0] += n);
         }
-        chunkTag.getListOrEmpty("block_entities").compoundStream()
-                .forEach(tag -> counts.computeIfAbsent(namespace(tag.getStringOr("id", "")), k -> new long[2])[1]++);
+        Nbt.compounds(Nbt.list(chunkTag, "block_entities"))
+                .forEach(tag -> counts.computeIfAbsent(namespace(Nbt.stringOrEmpty(tag, "id")), k -> new long[2])[1]++);
         return counts;
     }
 

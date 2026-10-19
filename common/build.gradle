@@ -2,10 +2,10 @@
 // unit-tested without downloading the game. The loader modules compile these
 // sources into their own jars.
 
-// The core stays on the Java 21 language level so it builds on any JDK from
-// 21 up; the loader jars themselves target Java 25.
+// The core stays on the Java 17 language level: the oldest target, Minecraft 1.20.1,
+// runs on Java 17, and every loader jar compiles these sources at its own level.
 tasks.withType(JavaCompile).configureEach {
-    options.release = 21
+    options.release = 17
 }
 
 dependencies {

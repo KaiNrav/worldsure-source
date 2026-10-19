@@ -38,7 +38,11 @@ public final class WorldsureNeoForge implements Platform {
                 WorldsureMc.onPlayerJoin(player, player.level().getServer());
             }
         });
+        //#if >=1.21.11
         if (FMLEnvironment.getDist() == Dist.CLIENT) {
+        //#else
+        //$ if (FMLEnvironment.dist == Dist.CLIENT) {
+        //#endif
             WorldsureNeoForgeClient.init();
         }
     }

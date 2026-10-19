@@ -2,7 +2,8 @@
 
 ## 0.1.0
 
-First public version, for Minecraft 26.3 on Fabric and NeoForge.
+First public version, for Minecraft 26.3, 26.2, 26.1.x, 1.21.11 and 1.21.1 on Fabric and NeoForge,
+and 1.20.1 on Fabric and Forge.
 
 - Every world keeps a passport of the mods it was played with (`<world>/worldsure/manifest.json`).
 - In single player, opening a world whose mods changed first shows the Worldsure screen: every

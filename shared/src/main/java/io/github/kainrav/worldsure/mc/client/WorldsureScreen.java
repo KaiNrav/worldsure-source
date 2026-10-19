@@ -1,15 +1,20 @@
 package io.github.kainrav.worldsure.mc.client;
 
-import com.mojang.blaze3d.Blaze3D;
 import io.github.kainrav.worldsure.WorldBackup;
 import io.github.kainrav.worldsure.Report;
 import io.github.kainrav.worldsure.WorldReview;
 import io.github.kainrav.worldsure.mc.Platform;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
+//#if >=26.1
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+//#else
+//$ import net.minecraft.client.gui.GuiGraphics;
+//#endif
+//#if >=1.21.9
+import net.minecraft.client.input.KeyEvent;
+//#endif
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -52,7 +57,7 @@ public final class WorldsureScreen extends Screen {
     }
 
     static WorldsureScreen inGame(WorldReview review, Screen parent) {
-        return new WorldsureScreen(review, null, () -> Minecraft.getInstance().gui.setScreen(parent));
+        return new WorldsureScreen(review, null, () -> WorldsureClient.setScreen(parent));
     }
 
     private boolean beforeLoad() {
@@ -78,7 +83,7 @@ public final class WorldsureScreen extends Screen {
         TabButton changesTab = new TabButton(left, tabsY,
                 Component.translatable("worldsure.tab.changes", review.changes().size()),
                 () -> !showAll, () -> select(false));
-        TabButton allTab = new TabButton(changesTab.getRight() + 4, tabsY,
+        TabButton allTab = new TabButton(changesTab.getX() + changesTab.getWidth() + 4, tabsY,
                 Component.translatable("worldsure.tab.all", review.entries().size()),
                 () -> showAll, () -> select(true));
         addRenderableWidget(changesTab);
@@ -109,7 +114,7 @@ public final class WorldsureScreen extends Screen {
         } else {
             Path backups = WorldBackup.backupsDir(Platform.get().gameDir());
             FlatButton openBackups = button("worldsure.button.backups", FlatButton.Style.SECONDARY,
-                    () -> Blaze3D.openPath(backups));
+                    () -> WorldsureClient.openFolder(backups));
             openBackups.active = Files.isDirectory(backups);
             buttons.add(openBackups);
             buttons.add(button("worldsure.button.done", FlatButton.Style.PRIMARY, onBack));
@@ -138,8 +143,48 @@ public final class WorldsureScreen extends Screen {
         list.show(showAll ? review.entries() : review.changes());
     }
 
+    //#if >=26.1
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+        Gfx gfx = new Gfx(graphics);
+        extractPanel(gfx, mouseX, mouseY);
+        super.extractRenderState(graphics, mouseX, mouseY, a);
+        extractOverlay(gfx);
+    }
+    //#elif >=1.21.6
+    //$ @Override
+    //$ public void render(GuiGraphics graphics, int mouseX, int mouseY, float a) {
+    //$     Gfx gfx = new Gfx(graphics);
+    //$     extractPanel(gfx, mouseX, mouseY);
+    //$     super.render(graphics, mouseX, mouseY, a);
+    //$     extractOverlay(gfx);
+    //$ }
+    //#elif >=1.20.2
+    //$ // Screen.render draws the background first, so the panel goes on top of it there.
+    //$ @Override
+    //$ public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float a) {
+    //$     super.renderBackground(graphics, mouseX, mouseY, a);
+    //$     extractPanel(new Gfx(graphics), mouseX, mouseY);
+    //$ }
+    //$
+    //$ @Override
+    //$ public void render(GuiGraphics graphics, int mouseX, int mouseY, float a) {
+    //$     super.render(graphics, mouseX, mouseY, a);
+    //$     extractOverlay(new Gfx(graphics));
+    //$ }
+    //#else
+    //$ @Override
+    //$ public void render(GuiGraphics graphics, int mouseX, int mouseY, float a) {
+    //$     renderBackground(graphics);
+    //$     Gfx gfx = new Gfx(graphics);
+    //$     extractPanel(gfx, mouseX, mouseY);
+    //$     super.render(graphics, mouseX, mouseY, a);
+    //$     extractOverlay(gfx);
+    //$ }
+    //#endif
+
+    /** The panel, header, counters and backup line, under the widgets. */
+    private void extractPanel(Gfx graphics, int mouseX, int mouseY) {
         int x0 = panelLeft();
         int x1 = x0 + panelWidth();
         int y0 = MARGIN;
@@ -154,23 +199,24 @@ public final class WorldsureScreen extends Screen {
         extractHeader(graphics, left, right, top);
         extractCounters(graphics, right, top + 29, mouseX, mouseY);
         extractBanner(graphics, left, right, height - MARGIN - PAD - BUTTON_HEIGHT - BANNER_HEIGHT - 6);
+    }
 
-        super.extractRenderState(graphics, mouseX, mouseY, a);
-
+    /** What goes over the widgets: the note in an empty list. */
+    private void extractOverlay(Gfx graphics) {
         if (list.children().isEmpty()) {
             Component empty = Component.translatable("worldsure.empty");
-            graphics.text(font, empty, (list.getX() + list.getRight() - font.width(empty)) / 2, list.getY() + 12,
-                    Theme.MUTED, false);
+            graphics.text(font, empty, (list.listLeft() + list.listRight() - font.width(empty)) / 2, list.listTop() + 12,
+                    Theme.MUTED);
         }
     }
 
-    private void extractHeader(GuiGraphicsExtractor graphics, int left, int right, int top) {
-        graphics.text(font, "⛨", left, top, Theme.ACCENT, false);
-        graphics.text(font, title, left + 11, top, Theme.ACCENT, false);
+    private void extractHeader(Gfx graphics, int left, int right, int top) {
+        graphics.text(font, "⛨", left, top, Theme.ACCENT);
+        graphics.text(font, title, left + 11, top, Theme.ACCENT);
         int nameX = left + 11 + font.width(title) + 6;
-        graphics.text(font, "·", nameX - 4, top, Theme.DIM, false);
+        graphics.text(font, "·", nameX - 4, top, Theme.DIM);
         String name = font.plainSubstrByWidth(review.worldName(), right - nameX - 2);
-        graphics.text(font, name, nameX + 2, top, Theme.TEXT, false);
+        graphics.text(font, name, nameX + 2, top, Theme.TEXT);
 
         Component subtitle;
         if (review.backup().state() == WorldReview.BackupState.FIRST_VISIT) {
@@ -182,11 +228,11 @@ public final class WorldsureScreen extends Screen {
                     savedAt());
         }
         String text = font.plainSubstrByWidth(subtitle.getString(), right - left);
-        graphics.text(font, text, left, top + 12, Theme.MUTED, false);
+        graphics.text(font, text, left, top + 12, Theme.MUTED);
     }
 
     /** Compact "✖ 2  ↓ 1  ↑ 1  + 1" counters, right-aligned on the tab row. */
-    private void extractCounters(GuiGraphicsExtractor graphics, int right, int y, int mouseX, int mouseY) {
+    private void extractCounters(Gfx graphics, int right, int y, int mouseX, int mouseY) {
         int x = right;
         int x1 = right;
         WorldReview.Status[] order = {WorldReview.Status.ADDED, WorldReview.Status.UPDATED,
@@ -200,18 +246,18 @@ public final class WorldsureScreen extends Screen {
             int w = font.width(text) + 8;
             x -= w;
             Theme.rounded(graphics, x, y - 3, x + w, y + 11, Theme.alpha(Theme.color(status), 0x30));
-            graphics.text(font, text, x + 4, y, Theme.color(status), false);
+            graphics.text(font, text, x + 4, y, Theme.color(status));
             x -= 4;
         }
         if (x != right && mouseX >= x && mouseX < x1 && mouseY >= y - 3 && mouseY < y + 11) {
-            graphics.setTooltipForNextFrame(font, Component.translatable("worldsure.counters",
+            graphics.tooltip(font, List.of(Component.translatable("worldsure.counters",
                     review.count(WorldReview.Status.REMOVED), review.count(WorldReview.Status.DOWNGRADED),
-                    review.count(WorldReview.Status.UPDATED), review.count(WorldReview.Status.ADDED)), mouseX, mouseY);
+                    review.count(WorldReview.Status.UPDATED), review.count(WorldReview.Status.ADDED))), mouseX, mouseY);
         }
     }
 
     /** One line about the backup, tinted by how safe the world is. */
-    private void extractBanner(GuiGraphicsExtractor graphics, int left, int right, int y) {
+    private void extractBanner(Gfx graphics, int left, int right, int y) {
         WorldReview.Backup backup = review.backup();
         int color;
         String icon;
@@ -255,9 +301,9 @@ public final class WorldsureScreen extends Screen {
         }
         Theme.rounded(graphics, left, y, right, y + BANNER_HEIGHT, Theme.alpha(color, 0x22));
         graphics.fill(left, y + 2, left + 2, y + BANNER_HEIGHT - 2, color);
-        graphics.text(font, icon, left + 8, y + 5, color, false);
+        graphics.text(font, icon, left + 8, y + 5, color);
         String line = font.plainSubstrByWidth(text.getString(), right - left - 26);
-        graphics.text(font, line, left + 20, y + 5, Theme.TEXT, false);
+        graphics.text(font, line, left + 20, y + 5, Theme.TEXT);
     }
 
     private String savedAt() {
@@ -275,6 +321,7 @@ public final class WorldsureScreen extends Screen {
         }
     }
 
+    //#if >=1.21.9
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (event.isEscape()) {
@@ -283,6 +330,16 @@ public final class WorldsureScreen extends Screen {
         }
         return super.keyPressed(event);
     }
+    //#else
+    //$ @Override
+    //$ public boolean keyPressed(int key, int scanCode, int modifiers) {
+    //$     if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+    //$         onBack.run();
+    //$         return true;
+    //$     }
+    //$     return super.keyPressed(key, scanCode, modifiers);
+    //$ }
+    //#endif
 
     @Override
     public void onClose() {

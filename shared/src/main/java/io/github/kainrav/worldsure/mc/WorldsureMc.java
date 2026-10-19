@@ -5,7 +5,9 @@ import io.github.kainrav.worldsure.Worldsure;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.storage.LevelResource;
 
 import java.nio.file.Path;
@@ -13,6 +15,23 @@ import java.nio.file.Path;
 /** The server lifecycle, shared by both loaders; each loader calls these from its own events. */
 public final class WorldsureMc {
     private WorldsureMc() {
+    }
+
+    /** The id of a level's dimension, like minecraft:overworld. */
+    public static String dimension(ServerLevel level) {
+        //#if >=1.21.11
+        return level.dimension().identifier().toString();
+        //#else
+        //$ return level.dimension().location().toString();
+        //#endif
+    }
+
+    public static long chunkKey(ChunkPos pos) {
+        //#if >=26.1
+        return MissingBlocks.chunkKey(pos.x(), pos.z());
+        //#else
+        //$ return MissingBlocks.chunkKey(pos.x, pos.z);
+        //#endif
     }
 
     public static Path worldDir(MinecraftServer server) {

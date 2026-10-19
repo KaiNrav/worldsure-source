@@ -1,0 +1,40 @@
+// Forge, for 1.20.1. The jar is reobfuscated to the SRG names Forge runs on.
+apply plugin: 'net.neoforged.moddev.legacyforge'
+
+legacyForge {
+    version = forge_version
+
+    runs {
+        client {
+            client()
+            // -PquickPlay=<world> opens that single player world right away.
+            if (project.hasProperty('quickPlay')) {
+                programArguments.addAll('--quickPlaySingleplayer', project.property('quickPlay') as String)
+            }
+        }
+        server {
+            server()
+            gameDirectory = project.file('run')
+            programArgument '--nogui'
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+mixin {
+    add sourceSets.main, "${mod_id}.refmap.json"
+    config "${mod_id}.mixins.json"
+}
+
+dependencies {
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+}
+
+jar {
+    manifest.attributes('MixinConfigs': "${mod_id}.mixins.json")
+}

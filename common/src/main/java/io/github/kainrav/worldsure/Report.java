@@ -21,7 +21,7 @@ public final class Report {
 
     public static List<Line> build(String worldName, ModDiff diff, Map<String, ObjectCounts> counts, BackupResult backup) {
         List<Line> lines = new ArrayList<>(changes(diff, counts));
-        lines.addFirst(new Line(Kind.HEADER, "[Worldsure] The mods of world \"" + worldName + "\" changed since it was last saved."));
+        lines.add(0, new Line(Kind.HEADER, "[Worldsure] The mods of world \"" + worldName + "\" changed since it was last saved."));
         backupLine(backup, lines);
         return lines;
     }

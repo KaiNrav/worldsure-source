@@ -1,6 +1,7 @@
 package io.github.kainrav.worldsure.mc.mixin;
 
 import io.github.kainrav.worldsure.Worldsure;
+import io.github.kainrav.worldsure.mc.WorldsureMc;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -28,6 +29,6 @@ public abstract class EntityStorageMixin {
         Map<String, Long> counts = new HashMap<>();
         chunk.getEntities().forEach(entity ->
                 counts.merge(EntityType.getKey(entity.getType()).getNamespace(), 1L, Long::sum));
-        Worldsure.counts().putEntities(level.dimension().identifier().toString(), chunk.getPos().pack(), counts);
+        Worldsure.counts().putEntities(WorldsureMc.dimension(level), WorldsureMc.chunkKey(chunk.getPos()), counts);
     }
 }
