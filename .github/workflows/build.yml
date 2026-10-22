@@ -3,6 +3,8 @@ name: Build
 on:
   push:
     branches: [main]
+    # A version tag is tested here; the Daily release workflow only releases tags that passed.
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 

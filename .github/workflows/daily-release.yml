@@ -1,0 +1,73 @@
+name: Daily release
+
+# Once a day, releases the next version waiting in the queue. Versions are queued by pushing their
+# tag (v<version>, matching mod_version) ahead of time; pushing a tag only runs the Build workflow.
+# Each day the lowest tag that has no GitHub release yet is released, if the Build run for its commit
+# succeeded. If that run is still going, the day is skipped; if it failed, this workflow fails (so
+# GitHub sends a notice) and nothing is released until the tag is fixed. Never more than one a day.
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: daily-release
+
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.next.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Pick the next tag
+        id: next
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          next=""
+          for tag in $(git tag -l 'v*' | sort -V); do
+            if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+              next=$tag
+              break
+            fi
+          done
+          if [ -z "$next" ]; then
+            echo "::notice::Every queued version is released already."
+            exit 0
+          fi
+          sha=$(git rev-list -n 1 "$next")
+          version=$(git show "$sha:gradle.properties" | sed -n 's/^mod_version=//p' | tr -d '\r')
+          if [ "$next" != "v$version" ]; then
+            echo "::error::$next points at a commit with mod_version $version."
+            exit 1
+          fi
+          runs=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow build.yml --commit "$sha" --limit 20 --json status,conclusion)
+          if echo "$runs" | jq -e 'any(.[]; .status == "completed" and .conclusion == "success")' > /dev/null; then
+            echo "Releasing $next ($sha)."
+            echo "tag=$next" >> "$GITHUB_OUTPUT"
+          elif echo "$runs" | jq -e 'any(.[]; .status != "completed")' > /dev/null; then
+            echo "::notice::The Build run for $next is still going; trying again tomorrow."
+          elif echo "$runs" | jq -e 'length == 0' > /dev/null; then
+            echo "::error::$next has no Build run. Push the tag again to start one."
+            exit 1
+          else
+            echo "::error::The Build run for $next failed; nothing is released until it passes."
+            exit 1
+          fi
+
+  release:
+    needs: pick
+    if: needs.pick.outputs.tag != ''
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.pick.outputs.tag }}
+    secrets: inherit

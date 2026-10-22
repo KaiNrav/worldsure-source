@@ -94,11 +94,19 @@ and that the passport counts them.
 
 ## Releasing
 
-1. Set `mod_version` (and `release_type`: `release`, `beta` or `alpha`) in `gradle.properties`.
-2. Add a `## <version>` section to `CHANGELOG.md`.
-3. Push a tag `v<version>`, e.g. `git tag v0.1.0 && git push origin v0.1.0`.
+Versions go out one a day from a queue:
 
-The Release workflow checks the tag against `mod_version`, builds, and creates a GitHub release with
-all twelve jars and the changelog section. To also publish to Modrinth and CurseForge, add repository
-secrets `MODRINTH_TOKEN` / `CURSEFORGE_TOKEN` and variables `MODRINTH_ID` / `CURSEFORGE_ID`
-(Settings → Secrets and variables → Actions). The store page text and icon are in `docs/`.
+1. Set `mod_version` (and `release_type`: `release`, `beta` or `alpha`) in `gradle.properties` and
+   add a `## <version>` section to `CHANGELOG.md`.
+2. Push a tag `v<version>` on that commit, e.g. `git tag v0.1.1 && git push origin v0.1.1`. The tag
+   only starts the Build workflow (jars, game tests, server smoke test).
+3. Every day at 12:00 UTC the Daily release workflow takes the lowest tag that has no GitHub release
+   yet and, if its Build run passed, runs the Release workflow for it. A tag whose Build is still
+   running waits for the next day; one whose Build failed stops the queue and fails the workflow, so
+   GitHub sends a notice. Fix it and move the tag (`git tag -f`, `git push -f origin <tag>`).
+
+Release (also runnable by hand from the Actions tab with a tag) checks the tag against `mod_version`,
+builds, and creates a GitHub release with all twelve jars and the changelog section. To also publish
+to Modrinth and CurseForge, add repository secrets `MODRINTH_TOKEN` / `CURSEFORGE_TOKEN` and
+variables `MODRINTH_ID` / `CURSEFORGE_ID` (Settings → Secrets and variables → Actions). The store
+page text and icon are in `docs/`.
