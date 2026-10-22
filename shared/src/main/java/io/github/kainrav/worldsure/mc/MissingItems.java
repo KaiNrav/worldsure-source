@@ -1,5 +1,6 @@
 package io.github.kainrav.worldsure.mc;
 
+import io.github.kainrav.worldsure.Timings;
 import io.github.kainrav.worldsure.Worldsure;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -160,11 +161,13 @@ public final class MissingItems {
         if (tag == null) {
             return null;
         }
+        long start = System.nanoTime();
         int[] made = new int[1];
         Tag out = wrap(tag, made);
         if (made[0] > 0) {
             active = true;
         }
+        Timings.since(Timings.Kind.ITEM_READ, start);
         return (CompoundTag) out;
     }
 
@@ -224,6 +227,7 @@ public final class MissingItems {
      */
     public static CompoundTag unwrap(CompoundTag tag) {
         if (active && tag != null) {
+            long start = System.nanoTime();
             if (isPlaceholder(tag)) {
                 CompoundTag original = original(tag);
                 if (original != null) {
@@ -232,6 +236,7 @@ public final class MissingItems {
             } else {
                 unwrapChildren(tag);
             }
+            Timings.since(Timings.Kind.ITEM_WRITE, start);
         }
         return tag;
     }

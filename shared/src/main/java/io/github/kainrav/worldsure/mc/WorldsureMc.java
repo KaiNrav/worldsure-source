@@ -1,6 +1,7 @@
 package io.github.kainrav.worldsure.mc;
 
 import io.github.kainrav.worldsure.Report;
+import io.github.kainrav.worldsure.Timings;
 import io.github.kainrav.worldsure.Worldsure;
 import io.github.kainrav.worldsure.WorldsureConfig;
 import net.minecraft.ChatFormatting;
@@ -69,12 +70,15 @@ public final class WorldsureMc {
 
     /** The entity chunk tag without entities of removed mods, or as it was if that fails. */
     public static CompoundTag keepMissingEntities(String dimension, CompoundTag chunkTag) {
+        long start = System.nanoTime();
         try {
             return MissingEntities.keepMissing(dimension, chunkTag);
         } catch (RuntimeException e) {
             // Never stand between the player and their chunk: load it as the game would.
             Worldsure.LOG.error("Could not keep entities of removed mods of a chunk; loading it as the game would", e);
             return chunkTag;
+        } finally {
+            Timings.since(Timings.Kind.ENTITY_READ, start);
         }
     }
 
@@ -135,6 +139,8 @@ public final class WorldsureMc {
         MissingBlocks.clear();
         MissingEntities.clear();
         MissingItems.clear();
+        Worldsure.LOG.info("Time Worldsure spent on saved data this session: {}", Timings.summary());
+        Timings.reset();
     }
 
     public static void onPlayerJoin(ServerPlayer player, MinecraftServer server) {

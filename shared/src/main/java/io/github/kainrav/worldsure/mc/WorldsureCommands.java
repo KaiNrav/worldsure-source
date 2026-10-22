@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import io.github.kainrav.worldsure.ObjectCounts;
 import io.github.kainrav.worldsure.Report;
+import io.github.kainrav.worldsure.Timings;
 import io.github.kainrav.worldsure.WorldBackup;
 import io.github.kainrav.worldsure.WorldReview;
 import io.github.kainrav.worldsure.Worldsure;
@@ -124,6 +125,7 @@ public final class WorldsureCommands {
                 say(source, "    and " + (totals.size() - 8) + " more mods", ChatFormatting.GRAY);
             }
         }
+        say(source, "  Time on saved data: " + Timings.summary(), ChatFormatting.GRAY);
         List<WorldBackup.Backup> backups = backups(server);
         say(source, "  Backups: " + backups.size() + (backups.isEmpty() ? "" : ", newest " + TIME.format(backups.get(0).time()))
                 + " (" + WorldBackup.backupsDir(Platform.get().gameDir()) + ")", ChatFormatting.GRAY);

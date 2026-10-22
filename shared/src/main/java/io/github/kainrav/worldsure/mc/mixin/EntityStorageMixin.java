@@ -1,5 +1,6 @@
 package io.github.kainrav.worldsure.mc.mixin;
 
+import io.github.kainrav.worldsure.Timings;
 import io.github.kainrav.worldsure.Worldsure;
 import io.github.kainrav.worldsure.mc.MissingEntities;
 import io.github.kainrav.worldsure.mc.WorldsureMc;
@@ -80,6 +81,7 @@ public abstract class EntityStorageMixin {
 
     @Unique
     private CompoundTag worldsure$restoreAndCount(ChunkPos pos, CompoundTag tag) {
+        long start = System.nanoTime();
         String dimension = WorldsureMc.dimension(level);
         CompoundTag out;
         try {
@@ -94,6 +96,7 @@ public abstract class EntityStorageMixin {
         } catch (RuntimeException e) {
             Worldsure.LOG.warn("Could not count entities in chunk {}", pos, e);
         }
+        Timings.since(Timings.Kind.ENTITY_WRITE, start);
         return out;
     }
 }

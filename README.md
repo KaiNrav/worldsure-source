@@ -155,6 +155,10 @@ checks are in `shared/src/gametest`; each loader registers them from `<loader>/s
 a separate source set, so they never go into the jars. The run starts from a fresh world in
 `versions/<minecraft>/<loader>/build/gametest`.
 
+The load test (`parallel_chunk_saves_keep_everything`) runs 256 chunks of a removed mod through
+Worldsure on 8 threads; the server test ends with a load step over the 256 chunks at the origin.
+`/worldsure status` shows how much time Worldsure spent on saved data in the session.
+
 CI builds every jar and then, for each target, runs the game tests and a real dedicated server twice
 (`.github/smoke/smoke.py`): the second run opens the world with a fake mod's blocks
 written into a chunk and checks the backup, the report, that the blocks survive a save

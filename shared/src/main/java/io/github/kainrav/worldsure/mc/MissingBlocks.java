@@ -36,7 +36,8 @@ import java.util.function.Predicate;
  *
  * <p>Biomes of removed mods are kept the same way: they load as plains, and every spot whose biome
  * is still the stand-in when the chunk is written gets its original biome back; a spot changed in
- * the meantime (with /fillbiome, say) keeps the new biome.
+ * the meantime (with /fillbiome, say) keeps the new biome. Once no stand-in is left, the originals
+ * are let go.
  */
 public final class MissingBlocks {
     //#if >=1.21.11
@@ -279,6 +280,7 @@ public final class MissingBlocks {
         }
         Map<Integer, boolean[]> placeholderPositions = new HashMap<>();
         Map<Integer, PackedSection<Tag>> stillNeeded = new HashMap<>();
+        Map<Integer, List<PackedSection<Tag>>> biomesStillNeeded = new HashMap<>();
         ListTag sections = Nbt.list(chunkTag, "sections");
         for (int i = 0; i < sections.size(); i++) {
             CompoundTag section = Nbt.compoundAt(sections, i);
@@ -286,7 +288,15 @@ public final class MissingBlocks {
             List<PackedSection<Tag>> biome = stash.biomes().get(y);
             CompoundTag biomeTag = Nbt.compound(section, "biomes").orElse(null);
             if (biome != null && biomeTag != null) {
-                storeBiomes(biomeTag, readBiomes(biomeTag).restoreUnchanged(biome.get(1), biome.get(0)));
+                PackedSection<Tag> current = readBiomes(biomeTag);
+                storeBiomes(biomeTag, current.restoreUnchanged(biome.get(1), biome.get(0)));
+                // Kept as long as some spot still holds the stand-in for a biome of a removed mod.
+                for (int p = 0; p < current.size(); p++) {
+                    if (!biome.get(0).get(p).equals(biome.get(1).get(p)) && current.get(p).equals(biome.get(1).get(p))) {
+                        biomesStillNeeded.put(y, biome);
+                        break;
+                    }
+                }
             }
             PackedSection<Tag> original = stash.sections().get(y);
             CompoundTag blockStates = Nbt.compound(section, "block_states").orElse(null);
@@ -330,11 +340,12 @@ public final class MissingBlocks {
             chunkTag.put("block_entities", blockEntities);
         }
 
-        // Placeholders broken on purpose (in creative) no longer need their originals; biomes stay for the session.
-        Stash left = new Stash(stillNeeded, entitiesStillNeeded, stash.biomes());
+        // Placeholders broken on purpose (in creative) and biomes changed everywhere no longer need their originals.
+        Stash left = new Stash(stillNeeded, entitiesStillNeeded, biomesStillNeeded);
         if (left.isEmpty()) {
             STASHES.remove(key);
-        } else if (stillNeeded.size() != stash.sections().size() || entitiesStillNeeded.size() != stash.blockEntities().size()) {
+        } else if (stillNeeded.size() != stash.sections().size() || entitiesStillNeeded.size() != stash.blockEntities().size()
+                || biomesStillNeeded.size() != stash.biomes().size()) {
             STASHES.put(key, left);
         }
     }
@@ -361,6 +372,11 @@ public final class MissingBlocks {
     static String namespace(String id) {
         int colon = id.indexOf(':');
         return colon < 0 ? "minecraft" : id.substring(0, colon);
+    }
+
+    /** How many chunks have something kept in memory. */
+    static int stashCount() {
+        return STASHES.size();
     }
 
     public static void clear() {

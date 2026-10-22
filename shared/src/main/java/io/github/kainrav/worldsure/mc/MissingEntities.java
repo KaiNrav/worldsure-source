@@ -182,6 +182,11 @@ public final class MissingEntities {
         }
     }
 
+    /** How many chunks have entities kept in memory. */
+    static int stashCount() {
+        return STASHES.size();
+    }
+
     public static void clear() {
         STASHES.clear();
     }

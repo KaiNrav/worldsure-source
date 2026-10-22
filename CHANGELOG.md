@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0
+
+- Load tests. A game test sends 256 chunks holding blocks, chests and biomes of a removed mod through
+  Worldsure from 8 threads at once, the way chunk saves run, three saves each: nothing is lost and no
+  kept data lingers afterwards (about 0.2 to 0.4 s in all). The server test now also turns the stone
+  of all 256 chunks at the origin into a removed mod's block, loads them, changes every one and checks
+  that each was saved with its blocks.
+- Biomes of a removed mod are let go from memory once no chunk spot holds their stand-in any more,
+  instead of being kept until the world closes.
+- `/worldsure status` and the log, when a world closes, show how much time Worldsure spent on chunk,
+  entity and item data in the session.
+
 ## 0.7.0
 
 - The world list marks worlds whose mods changed since they were last played: their info line

@@ -11,7 +11,9 @@ End-to-end check on a real dedicated server, for one target such as 26.3:fabric:
 4. ask for that backup with /worldsure restore: the server must stop by itself, and on the next
    start the world must be the backup again, the replaced world kept next to it;
 5. in strict mode, with a mod gone from the passport, the server must refuse to start until the
-   change is accepted with <world>/worldsure/accept-changes.
+   change is accepted with <world>/worldsure/accept-changes;
+6. load: turn the stone of every stored chunk in the 16x16 chunks at the origin into fakemod:stone,
+   load them all, change every one so it is saved, and check that none lost a block.
 """
 import glob
 import json
@@ -79,10 +81,11 @@ def rcon(*commands):
     s.close()
 
 
-def run_server(*commands, finish=("save-all flush", "stop"), wait_for=None):
+def run_server(*commands, finish=("save-all flush", "stop"), wait_for=None, pause=0):
     """Starts the server, runs commands over RCON once it is up, stops it and returns its output.
     With finish=() the commands themselves must stop the server. With wait_for, the server is only
-    stopped once a line matching that pattern was printed (or after 3 minutes)."""
+    stopped once a line matching that pattern was printed (or after 3 minutes); with pause, after that
+    many seconds."""
     task = f":{TARGET}:runServer"
     proc = subprocess.Popen([GRADLE, task, *GRADLE_ARGS], cwd=ROOT, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True)
@@ -106,6 +109,7 @@ def run_server(*commands, finish=("save-all flush", "stop"), wait_for=None):
         deadline = time.time() + 180
         while time.time() < deadline and not any(re.search(wait_for, line) for line in list(lines)):
             time.sleep(1)
+    time.sleep(pause)
     if finish:
         rcon(*finish)
     proc.wait(300)
@@ -293,9 +297,40 @@ def main():
     check("Worldsure strict mode" in output and "removed: fakemod2 2.0.0" in output, "strict mode refused to start with fakemod2 gone")
     check("RCON running on" not in output, "the refused server never came up")
     open(os.path.join(WORLD, "worldsure", "accept-changes"), "w").close()
-    output = run_server()
+    # Also generates the 16x16 chunks at the origin, which the load test below uses.
+    output = run_server("forceload add 0 0 255 255", pause=20)
     check("the mod changes were accepted" in output, "accept-changes let the server start once")
     check(not os.path.exists(os.path.join(WORLD, "worldsure", "accept-changes")), "the acceptance was used up")
+
+    region = overworld_region()
+    edited = []
+    for x in range(16):
+        for z in range(16):
+            index = x + z * 32
+            chunk = nbt.read_chunk(region, index)
+            if chunk is None or "sections" not in chunk.value:
+                continue
+            renamed = 0
+            for entry in palette_entries(chunk):
+                name = block_id(entry)
+                if name.value == "minecraft:stone":
+                    name.value = "fakemod:stone"
+                    renamed += 1
+            if renamed:
+                nbt.write_chunk(region, index, chunk)
+                edited.append(index)
+    check(len(edited) >= 200, f"{len(edited)} stored chunks got fakemod:stone for the load test")
+    started = time.time()
+    run_server("forceload add 0 0 255 255", "fill 0 300 0 127 300 127 minecraft:glass",
+               "fill 128 300 0 255 300 127 minecraft:glass", "fill 0 300 128 127 300 255 minecraft:glass",
+               "fill 128 300 128 255 300 255 minecraft:glass")
+    log(f"load run took {time.time() - started:.0f} s for {len(edited)} chunks")
+    lost = []
+    for index in edited:
+        names = palette_names(nbt.read_chunk(region, index))
+        if "fakemod:stone" not in names or "minecraft:glass" not in names or "worldsure:missing_block" in names:
+            lost.append(index)
+    check(not lost, f"all {len(edited)} chunks were saved with their fakemod:stone and the new glass (failed: {lost[:10]})")
     log("all checks passed")
 
 

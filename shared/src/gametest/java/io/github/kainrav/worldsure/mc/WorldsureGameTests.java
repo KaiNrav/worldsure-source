@@ -60,6 +60,7 @@ public final class WorldsureGameTests {
         tests.put("server_only_blocks_use_bedrock", ServerModeGameTests::serverOnlyBlocksUseBedrock);
         tests.put("server_only_items_use_barriers", ServerModeGameTests::serverOnlyItemsUseBarriers);
         tests.put("status_backup_and_scan_commands", ServerModeGameTests::statusBackupAndScanCommands);
+        tests.put("parallel_chunk_saves_keep_everything", LoadGameTests::parallelChunkSavesKeepEverything);
         return tests;
     }
 

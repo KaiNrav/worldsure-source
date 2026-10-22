@@ -1,5 +1,6 @@
 package io.github.kainrav.worldsure.mc.mixin;
 
+import io.github.kainrav.worldsure.Timings;
 import io.github.kainrav.worldsure.Worldsure;
 import io.github.kainrav.worldsure.mc.MissingBlocks;
 import io.github.kainrav.worldsure.mc.WorldsureMc;
@@ -110,17 +111,21 @@ public abstract class ChunkDataMixin {
     /** The chunk tag with placeholders for missing blocks, or null to load it as the game would. */
     @Unique
     private static CompoundTag worldsure$clean(ServerLevel level, CompoundTag chunkData) {
+        long start = System.nanoTime();
         try {
             return MissingBlocks.replaceMissing(WorldsureMc.dimension(level), chunkData, WorldsureMc.unknownBiome(level));
         } catch (RuntimeException e) {
             // Never stand between the player and their chunk: fall back to the game's own handling.
             Worldsure.LOG.error("Could not keep missing blocks of a chunk; loading it as the game would", e);
             return null;
+        } finally {
+            Timings.since(Timings.Kind.CHUNK_READ, start);
         }
     }
 
     @Unique
     private static void worldsure$restore(String dimension, ChunkPos pos, CompoundTag tag) {
+        long start = System.nanoTime();
         try {
             MissingBlocks.restore(dimension, tag);
         } catch (RuntimeException e) {
@@ -133,5 +138,6 @@ public abstract class ChunkDataMixin {
         } catch (RuntimeException e) {
             Worldsure.LOG.warn("Could not count objects in chunk {}", pos, e);
         }
+        Timings.since(Timings.Kind.CHUNK_WRITE, start);
     }
 }
