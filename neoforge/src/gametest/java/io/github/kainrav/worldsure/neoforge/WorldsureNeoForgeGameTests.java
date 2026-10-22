@@ -14,6 +14,7 @@ import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
 //#else
 //$ import io.github.kainrav.worldsure.mc.EntityGameTests;
+//$ import io.github.kainrav.worldsure.mc.ScanGameTests;
 //$ import io.github.kainrav.worldsure.mc.ItemGameTests;
 //$ import net.minecraft.gametest.framework.GameTest;
 //$ import net.minecraft.gametest.framework.GameTestHelper;
@@ -95,6 +96,16 @@ public final class WorldsureNeoForgeGameTests {
 //$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
 //$     public static void droppedItemKeepsMissingItem(GameTestHelper helper) {
 //$         ItemGameTests.droppedItemKeepsMissingItem(helper);
+//$     }
+//$
+//$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+//$     public static void missingBiomesComeBack(GameTestHelper helper) {
+//$         ScanGameTests.missingBiomesComeBack(helper);
+//$     }
+//$
+//$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+//$     public static void scanCountsStoredChunks(GameTestHelper helper) {
+//$         ScanGameTests.scanCountsStoredChunks(helper);
 //$     }
 //$ }
 //#endif

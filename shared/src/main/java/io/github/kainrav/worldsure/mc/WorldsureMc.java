@@ -3,15 +3,19 @@ package io.github.kainrav.worldsure.mc;
 import io.github.kainrav.worldsure.Report;
 import io.github.kainrav.worldsure.Worldsure;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.storage.LevelResource;
 
 import java.nio.file.Path;
+import java.util.function.Predicate;
 
 /** The server lifecycle, shared by both loaders; each loader calls these from its own events. */
 public final class WorldsureMc {
@@ -51,6 +55,16 @@ public final class WorldsureMc {
         //#endif
     }
 
+    /** Whether a biome id names nothing in the level's biome registry, the way biomes of removed mods look. */
+    public static Predicate<String> unknownBiome(ServerLevel level) {
+        //#if >=1.21.2
+        Registry<Biome> biomes = level.registryAccess().lookupOrThrow(Registries.BIOME);
+        //#else
+        //$ Registry<Biome> biomes = level.registryAccess().registryOrThrow(Registries.BIOME);
+        //#endif
+        return id -> MissingBlocks.isUnknown(id, biomes);
+    }
+
     /** The entity chunk tag without entities of removed mods, or as it was if that fails. */
     public static CompoundTag keepMissingEntities(String dimension, CompoundTag chunkTag) {
         try {
@@ -74,6 +88,11 @@ public final class WorldsureMc {
 
     public static void onServerStarted(MinecraftServer server) {
         Worldsure.afterWorldLoad(worldDir(server), Platform.get().loaderName(), Platform.get().installedMods());
+        try {
+            Worldsure.startScan(index -> WorldScanMc.create(server, index));
+        } catch (RuntimeException e) {
+            Worldsure.LOG.warn("Could not start counting the world in the background", e);
+        }
     }
 
     /** After the final save. */

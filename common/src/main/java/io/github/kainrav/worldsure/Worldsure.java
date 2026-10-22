@@ -33,6 +33,8 @@ public final class Worldsure {
     /** Choices made on the confirmation screen, by world folder, consumed when that world's server starts. */
     private static final Map<Path, Report.BackupResult> decisions = new ConcurrentHashMap<>();
     private static volatile CountIndex counts = new CountIndex();
+    /** The background count of the open world, if one runs. */
+    private static WorldScan scan;
     /** Whether the open world's count index is from a newer Worldsure and must stay as it is. */
     private static volatile boolean keepCountIndex;
     private static WorldReview currentReview;
@@ -244,6 +246,31 @@ public final class Worldsure {
         }
     }
 
+    /**
+     * Counts the dimensions of the open world not counted yet, in the background (see {@link WorldScan}).
+     *
+     * @param scanFactory makes the scan for the current count index
+     */
+    public static synchronized void startScan(java.util.function.Function<CountIndex, WorldScan> scanFactory) {
+        stopScan();
+        if (keepCountIndex) {
+            return;
+        }
+        WorldScan next = scanFactory.apply(counts);
+        if (next.isNeeded()) {
+            LOG.info("Counting the modded objects of the whole world in the background");
+            scan = next;
+            next.start();
+        }
+    }
+
+    private static void stopScan() {
+        if (scan != null) {
+            scan.stop();
+            scan = null;
+        }
+    }
+
     /** Returns the report of the world that just loaded, once; later calls get an empty list. */
     public static synchronized List<Report.Line> takeJoinReport() {
         List<Report.Line> report = pendingReport;
@@ -255,6 +282,7 @@ public final class Worldsure {
     public static synchronized void onWorldClosed(Path worldDir, String loader, List<ModInfo> installed) {
         pendingReport = List.of();
         currentReview = null;
+        stopScan();
         try {
             if (!keepCountIndex) {
                 counts.write(worldDir);

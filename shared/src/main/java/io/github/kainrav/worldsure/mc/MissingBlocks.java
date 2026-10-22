@@ -33,6 +33,10 @@ import java.util.function.Predicate;
  * is kept in memory along with the block entities (chests, machines) of unknown types. When the
  * chunk is written, every placeholder still in place is turned back into the original block and
  * its block entity, so the file on disk never contains a placeholder.
+ *
+ * <p>Biomes of removed mods are kept the same way: they load as plains, and every spot whose biome
+ * is still the stand-in when the chunk is written gets its original biome back; a spot changed in
+ * the meantime (with /fillbiome, say) keeps the new biome.
  */
 public final class MissingBlocks {
     //#if >=1.21.11
@@ -48,7 +52,18 @@ public final class MissingBlocks {
     /** dimension + chunk -> what the chunk held before placeholders went in */
     private static final Map<String, Stash> STASHES = new ConcurrentHashMap<>();
 
-    private record Stash(Map<Integer, PackedSection<Tag>> sections, List<CompoundTag> blockEntities) {
+    private static final StringTag BIOME_STAND_IN = StringTag.valueOf("minecraft:plains");
+
+    /**
+     * @param sections      section Y -> block states as on disk, for sections holding placeholders
+     * @param blockEntities block entities of unknown types
+     * @param biomes        section Y -> biomes {as on disk, as loaded}, for sections with unknown biomes
+     */
+    private record Stash(Map<Integer, PackedSection<Tag>> sections, List<CompoundTag> blockEntities,
+                         Map<Integer, List<PackedSection<Tag>>> biomes) {
+        boolean isEmpty() {
+            return sections.isEmpty() && blockEntities.isEmpty() && biomes.isEmpty();
+        }
     }
 
     private MissingBlocks() {
@@ -130,6 +145,26 @@ public final class MissingBlocks {
         return PackedSection.unpack(palette(blockStates), Nbt.longArray(blockStates, "data").orElse(null), globalBits());
     }
 
+    private static List<Tag> biomePalette(CompoundTag biomes) {
+        return new ArrayList<>(Nbt.stringList(biomes, "palette"));
+    }
+
+    private static PackedSection<Tag> readBiomes(CompoundTag biomes) {
+        return PackedSection.unpackBiomes(biomePalette(biomes), Nbt.longArray(biomes, "data").orElse(null));
+    }
+
+    private static void storeBiomes(CompoundTag biomes, PackedSection<Tag> section) {
+        ListTag palette = new ListTag();
+        palette.addAll(section.palette());
+        biomes.put("palette", palette);
+        long[] data = section.packBiomes();
+        if (data == null) {
+            biomes.remove("data");
+        } else {
+            biomes.put("data", new LongArrayTag(data));
+        }
+    }
+
     private static void store(CompoundTag blockStates, PackedSection<Tag> section) {
         ListTag palette = new ListTag();
         palette.addAll(section.palette());
@@ -148,19 +183,37 @@ public final class MissingBlocks {
      * @return a cleaned copy of the chunk tag, or {@code null} if it holds nothing missing
      */
     public static CompoundTag replaceMissing(String dimension, CompoundTag chunkTag) {
+        return replaceMissing(dimension, chunkTag, biome -> false);
+    }
+
+    /**
+     * Swaps blocks, block entities and biomes of removed mods for placeholders.
+     *
+     * @param unknownBiome whether the level knows no biome of this id
+     * @return a cleaned copy of the chunk tag, or {@code null} if it holds nothing missing
+     */
+    public static CompoundTag replaceMissing(String dimension, CompoundTag chunkTag, Predicate<String> unknownBiome) {
         ListTag sections = Nbt.list(chunkTag, "sections");
         Map<Integer, PackedSection<Tag>> originals = new HashMap<>();
+        Map<Integer, List<PackedSection<Tag>>> biomes = new HashMap<>();
+        Predicate<Tag> isMissingBiome = entry -> entry instanceof StringTag id && unknownBiome.test(Nbt.value(id));
         for (int i = 0; i < sections.size(); i++) {
             CompoundTag section = Nbt.compoundAt(sections, i);
+            int y = Nbt.byteOr(section, "Y", (byte) 0);
             CompoundTag blockStates = Nbt.compound(section, "block_states").orElse(null);
             if (blockStates != null && palette(blockStates).stream().anyMatch(MissingBlocks::isMissing)) {
-                originals.put((int) Nbt.byteOr(section, "Y", (byte) 0), read(blockStates));
+                originals.put(y, read(blockStates));
+            }
+            CompoundTag biomeTag = Nbt.compound(section, "biomes").orElse(null);
+            if (biomeTag != null && biomePalette(biomeTag).stream().anyMatch(isMissingBiome)) {
+                PackedSection<Tag> original = readBiomes(biomeTag);
+                biomes.put(y, List.of(original, original.replace(isMissingBiome, BIOME_STAND_IN)));
             }
         }
         List<CompoundTag> missingEntities = Nbt.compounds(Nbt.list(chunkTag, "block_entities"))
                 .filter(MissingBlocks::isMissingBlockEntity)
                 .toList();
-        if (originals.isEmpty() && missingEntities.isEmpty()) {
+        if (originals.isEmpty() && missingEntities.isEmpty() && biomes.isEmpty()) {
             return null;
         }
 
@@ -168,9 +221,14 @@ public final class MissingBlocks {
         ListTag copiedSections = Nbt.list(copy, "sections");
         for (int i = 0; i < copiedSections.size(); i++) {
             CompoundTag section = Nbt.compoundAt(copiedSections, i);
-            PackedSection<Tag> original = originals.get((int) Nbt.byteOr(section, "Y", (byte) 0));
+            int y = Nbt.byteOr(section, "Y", (byte) 0);
+            PackedSection<Tag> original = originals.get(y);
             if (original != null) {
                 store(Nbt.compound(section, "block_states").orElseThrow(), original.replace(MissingBlocks::isMissing, PLACEHOLDER));
+            }
+            List<PackedSection<Tag>> biome = biomes.get(y);
+            if (biome != null) {
+                storeBiomes(Nbt.compound(section, "biomes").orElseThrow(), biome.get(1));
             }
         }
         if (!missingEntities.isEmpty()) {
@@ -182,9 +240,14 @@ public final class MissingBlocks {
         }
 
         long chunk = chunkKey(chunkTag);
-        STASHES.put(key(dimension, chunk), new Stash(originals, missingEntities));
-        Worldsure.LOG.info("Kept {} section(s) and {} block entities of removed mods in chunk {} of {}",
-                originals.size(), missingEntities.size(), chunk, dimension);
+        STASHES.put(key(dimension, chunk), new Stash(originals, missingEntities, biomes));
+        if (!originals.isEmpty() || !missingEntities.isEmpty()) {
+            Worldsure.LOG.info("Kept {} section(s) and {} block entities of removed mods in chunk {} of {}",
+                    originals.size(), missingEntities.size(), chunk, dimension);
+        }
+        if (!biomes.isEmpty()) {
+            Worldsure.LOG.info("Kept the biomes of removed mods in {} section(s) of chunk {} of {}", biomes.size(), chunk, dimension);
+        }
         return copy;
     }
 
@@ -214,6 +277,11 @@ public final class MissingBlocks {
         for (int i = 0; i < sections.size(); i++) {
             CompoundTag section = Nbt.compoundAt(sections, i);
             int y = Nbt.byteOr(section, "Y", (byte) 0);
+            List<PackedSection<Tag>> biome = stash.biomes().get(y);
+            CompoundTag biomeTag = Nbt.compound(section, "biomes").orElse(null);
+            if (biome != null && biomeTag != null) {
+                storeBiomes(biomeTag, readBiomes(biomeTag).restoreUnchanged(biome.get(1), biome.get(0)));
+            }
             PackedSection<Tag> original = stash.sections().get(y);
             CompoundTag blockStates = Nbt.compound(section, "block_states").orElse(null);
             if (original == null || blockStates == null) {
@@ -248,11 +316,12 @@ public final class MissingBlocks {
             chunkTag.put("block_entities", blockEntities);
         }
 
-        // Placeholders broken on purpose (in creative) no longer need their originals.
-        if (stillNeeded.isEmpty()) {
+        // Placeholders broken on purpose (in creative) no longer need their originals; biomes stay for the session.
+        Stash left = new Stash(stillNeeded, entitiesStillNeeded, stash.biomes());
+        if (left.isEmpty()) {
             STASHES.remove(key);
         } else if (stillNeeded.size() != stash.sections().size() || entitiesStillNeeded.size() != stash.blockEntities().size()) {
-            STASHES.put(key, new Stash(stillNeeded, entitiesStillNeeded));
+            STASHES.put(key, left);
         }
     }
 

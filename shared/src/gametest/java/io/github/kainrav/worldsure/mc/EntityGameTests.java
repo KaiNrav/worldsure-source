@@ -102,16 +102,16 @@ public final class EntityGameTests {
         List<CompletableFuture<ChunkEntities<Entity>>> loading = new ArrayList<>();
         List<CompletableFuture<Optional<CompoundTag>>> reading = new ArrayList<>();
         helper.startSequence()
-                .thenWaitUntil(() -> helper.assertTrue(written.isDone(), "writing the chunk file"))
+                .thenWaitUntil(() -> waitFor(helper, written, "writing the chunk file"))
                 .thenExecute(() -> loading.add(storage.loadEntities(pos)))
-                .thenWaitUntil(() -> helper.assertTrue(loading.get(0).isDone(), "loading the chunk's entities"))
+                .thenWaitUntil(() -> waitFor(helper, loading.get(0), "loading the chunk's entities"))
                 .thenExecute(() -> {
                     List<String> types = loading.get(0).join().getEntities().map(e -> e.getType().toString()).toList();
                     helper.assertTrue(types.size() == 1, "loaded " + types + " instead of just the marker");
                     storage.storeEntities(new ChunkEntities<>(pos, List.of()));
                     reading.add(read(raw, pos));
                 })
-                .thenWaitUntil(() -> helper.assertTrue(reading.get(0).isDone(), "reading the chunk file back"))
+                .thenWaitUntil(() -> waitFor(helper, reading.get(0), "reading the chunk file back"))
                 .thenExecute(() -> {
                     CompoundTag back = reading.get(0).join().orElse(null);
                     helper.assertTrue(back != null, "the chunk file is gone");
@@ -121,6 +121,21 @@ public final class EntityGameTests {
                             "the kept mob lost its data");
                 })
                 .thenSucceed();
+    }
+
+    /**
+     * Fails this tick unless the file work is done. A test server ticks without pause, so each wait also
+     * gives the disk 10 ms: the test's tick budget then lasts long enough for a slow disk.
+     */
+    static void waitFor(GameTestHelper helper, CompletableFuture<?> work, String what) {
+        if (!work.isDone()) {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        helper.assertTrue(work.isDone(), what);
     }
 
     private static CompletableFuture<?> write(Object raw, ChunkPos pos, CompoundTag tag) {

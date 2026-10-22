@@ -11,7 +11,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -22,16 +24,22 @@ import java.util.zip.GZIPOutputStream;
  * Stored as {@code <world>/worldsure/index.dat}, which starts with the number of its format.
  *
  * <p>Formats: 1 held blocks and block entities per chunk and namespace, then entities; 2 (since 0.3.0)
- * adds the items found with the blocks (in containers) and with the entities (dropped, carried, framed).
+ * adds the items found with the blocks (in containers) and with the entities (dropped, carried, framed);
+ * 3 (since 0.4.0) ends with the dimensions a {@link WorldScan} has counted completely.
  */
 public final class CountIndex {
     public static final String FILE_NAME = "index.dat";
     /** The format this version writes. A layout change bumps it and teaches {@link #read} the old one. */
-    public static final int FORMAT = 2;
+    public static final int FORMAT = 3;
     private static final String VANILLA = "minecraft";
 
     /** dimension -> chunk key -> namespace -> counts */
     private final Map<String, Map<Long, Chunk>> dimensions = new ConcurrentHashMap<>();
+    /** Dimensions whose stored chunks were all counted by a scan. */
+    private final Set<String> scanned = ConcurrentHashMap.newKeySet();
+    /** dimension@chunk of the halves the game saved this session, which a scan must not replace. */
+    private final Set<String> savedBlocks = ConcurrentHashMap.newKeySet();
+    private final Set<String> savedEntities = ConcurrentHashMap.newKeySet();
     private volatile boolean dirty;
 
     /**
@@ -68,7 +76,14 @@ public final class CountIndex {
      * @param counts namespace -> {blocks, block entities} or {blocks, block entities, items}; vanilla entries are ignored
      */
     public void putBlocks(String dimension, long chunkKey, Map<String, long[]> counts) {
+        savedBlocks.add(dimension + "@" + chunkKey);
         update(dimension, chunkKey, chunk -> chunk.withBlocks(modded(counts, 3)));
+    }
+
+    /** Block counts read by a scan; ignored for a chunk the game saved this session, whose save is newer. */
+    public void putScannedBlocks(String dimension, long chunkKey, Map<String, long[]> counts) {
+        Map<String, long[]> modded = modded(counts, 3);
+        update(dimension, chunkKey, chunk -> savedBlocks.contains(dimension + "@" + chunkKey) ? chunk : chunk.withBlocks(modded));
     }
 
     /**
@@ -77,7 +92,29 @@ public final class CountIndex {
      * @param counts namespace -> {entities} or {entities, items}; vanilla entries are ignored
      */
     public void putEntities(String dimension, long chunkKey, Map<String, long[]> counts) {
+        savedEntities.add(dimension + "@" + chunkKey);
         update(dimension, chunkKey, chunk -> chunk.withEntities(modded(counts, 2)));
+    }
+
+    /** Entity counts read by a scan; ignored for a chunk the game saved this session. */
+    public void putScannedEntities(String dimension, long chunkKey, Map<String, long[]> counts) {
+        Map<String, long[]> modded = modded(counts, 2);
+        update(dimension, chunkKey, chunk -> savedEntities.contains(dimension + "@" + chunkKey) ? chunk : chunk.withEntities(modded));
+    }
+
+    public boolean isScanned(String dimension) {
+        return scanned.contains(dimension);
+    }
+
+    public void markScanned(String dimension) {
+        scanned.add(dimension);
+        dirty = true;
+    }
+
+    /** Forgets which dimensions were scanned, so the next scan counts everything again. */
+    public void forgetScans() {
+        scanned.clear();
+        dirty = true;
     }
 
     /** The non-vanilla, non-zero entries, each padded to {@code size} values. */
@@ -166,6 +203,12 @@ public final class CountIndex {
                 }
                 index.dimensions.put(dimension, chunks);
             }
+            if (format >= 3) {
+                int scannedCount = in.readInt();
+                for (int i = 0; i < scannedCount; i++) {
+                    index.scanned.add(in.readUTF());
+                }
+            }
         }
         return index;
     }
@@ -198,6 +241,11 @@ public final class CountIndex {
                         out.writeLong(entry.getValue()[1]);
                     }
                 }
+            }
+            Set<String> done = new TreeSet<>(scanned);
+            out.writeInt(done.size());
+            for (String dimension : done) {
+                out.writeUTF(dimension);
             }
         }
         try {

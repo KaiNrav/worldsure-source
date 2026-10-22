@@ -19,11 +19,14 @@ updated or downgraded, Worldsure:
    their chunk loads and written back whenever it is saved;
 5. keeps the items of a removed mod, wherever they are (chests, inventories, item frames, the
    ground, shulker boxes): each becomes an "Item of a removed mod" that carries the original stack
-   and turns back into it whenever the game saves;
+   and turns back into it whenever the game saves; biomes of a removed mod load as plains and are
+   written back the same way;
 6. writes what changed to the log, and in chat tells single player players how the backup went.
 
 Counts of blocks, block entities, entities and items per mod are kept in
-`<world>/worldsure/index.dat` and summed into the passport. Adding a mod is reported but
+`<world>/worldsure/index.dat` and summed into the passport. The first time a world starts with
+Worldsure, every chunk and entity file is read once in the background to fill them in; from then on
+each chunk save keeps them current. Adding a mod is reported but
 does not trigger a backup. The world on disk never contains placeholders, so removing
 Worldsure itself is always safe.
 
@@ -39,8 +42,9 @@ world is backed up, but both files stay as they are until that newer version ope
 
 ## Not done yet
 
-Entities of a removed mod are kept but not shown while the mod is missing. Counts cover chunks
-saved while Worldsure was installed; items in player inventories are kept but not counted. Items
+Entities of a removed mod are kept but not shown while the mod is missing. Items in player
+inventories are kept but not counted, and chunks last saved before Minecraft 1.18 are counted once
+the game saves them. Items
 stored by other mods in their own files (storage networks, global backpacks) are outside Worldsure's
 reach.
 

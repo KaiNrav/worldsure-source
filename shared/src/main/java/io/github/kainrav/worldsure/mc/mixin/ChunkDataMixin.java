@@ -111,7 +111,7 @@ public abstract class ChunkDataMixin {
     @Unique
     private static CompoundTag worldsure$clean(ServerLevel level, CompoundTag chunkData) {
         try {
-            return MissingBlocks.replaceMissing(WorldsureMc.dimension(level), chunkData);
+            return MissingBlocks.replaceMissing(WorldsureMc.dimension(level), chunkData, WorldsureMc.unknownBiome(level));
         } catch (RuntimeException e) {
             // Never stand between the player and their chunk: fall back to the game's own handling.
             Worldsure.LOG.error("Could not keep missing blocks of a chunk; loading it as the game would", e);

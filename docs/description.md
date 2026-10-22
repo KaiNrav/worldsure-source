@@ -22,6 +22,9 @@ mod added: blocks, chests and machines, mobs. Worldsure notices before that happ
   their chunk loads and written back every time it is saved, so they return with the mod.
 - **Keeps the items of removed mods.** In chests, inventories, item frames and on the ground, each
   becomes an *Item of a removed mod* that carries the original and turns back into it on every save.
+  Biomes of a removed mod are kept too.
+- **Counts the whole world.** On the first start Worldsure counts every mod's blocks, machines, mobs
+  and items in the background, so the numbers on the screen are right from the start.
 
 Removing Worldsure itself is always safe: its placeholder blocks are never saved into the world.
 
@@ -33,7 +36,6 @@ On Fabric, Fabric API is required.
 ## Good to know
 
 - Install it on both the server and the clients, since it adds a block.
-- Counts only cover chunks saved while Worldsure was installed.
 - Settings: `config/worldsure.properties` (`autoBackup`, `keepBackups`).
 
 Source code and issues: https://github.com/KaiNrav/worldsure-source

@@ -61,6 +61,15 @@ final class Nbt {
         //#endif
     }
 
+    /** A list of strings under a key, empty when there is none. */
+    static ListTag stringList(CompoundTag tag, String key) {
+        //#if >=1.21.5
+        return tag.getListOrEmpty(key);
+        //#else
+        //$ return tag.getList(key, Tag.TAG_STRING);
+        //#endif
+    }
+
     static Optional<CompoundTag> compound(CompoundTag tag, String key) {
         //#if >=1.21.5
         return tag.getCompound(key);

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0
+
+- The counts on the Worldsure screen now cover the whole world from the first start: in the
+  background, Worldsure reads every chunk and entity file once and counts the blocks, chests or
+  machines, mobs and items of each mod, also in places nobody visited since it was installed. Each
+  dimension is read only once; after that every save keeps the counts current. The game is never
+  held up: the count runs on its own thread, leaves the disk to the game between files, and a
+  dimension it could not finish is counted again on the next start.
+- Biomes of a removed mod are kept. While the mod is missing they load as plains; when the chunk is
+  saved every spot still holding the stand-in gets its original biome back, and a spot changed in
+  the meantime (with /fillbiome, for example) keeps the change.
+- The object counts file (`index.dat`) moves to format 3, which remembers the dimensions already
+  counted; formats 1 and 2 are read and rewritten, and such a world is counted once.
+
 ## 0.3.0
 
 - Items of a removed mod are kept: in chests and machines, in player inventories and ender chests,

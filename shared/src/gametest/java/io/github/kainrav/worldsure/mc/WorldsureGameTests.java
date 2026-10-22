@@ -54,6 +54,8 @@ public final class WorldsureGameTests {
         tests.put("placeholders_carry_their_items", ItemGameTests::placeholdersCarryTheirItems);
         tests.put("chest_keeps_missing_items", ItemGameTests::chestKeepsMissingItems);
         tests.put("dropped_item_keeps_missing_item", ItemGameTests::droppedItemKeepsMissingItem);
+        tests.put("missing_biomes_come_back", ScanGameTests::missingBiomesComeBack);
+        tests.put("scan_counts_stored_chunks", ScanGameTests::scanCountsStoredChunks);
         return tests;
     }
 

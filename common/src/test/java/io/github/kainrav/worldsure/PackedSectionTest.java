@@ -89,4 +89,39 @@ class PackedSectionTest {
         assertFalse(saved.contains("worldsure:placeholder"::equals));
         assertTrue(saved.contains("create:press"::equals));
     }
+
+    @Test
+    void biomesPackWithAsFewBitsAsNeeded() {
+        List<String> biomes = new ArrayList<>();
+        for (int i = 0; i < PackedSection.BIOME_SIZE; i++) {
+            biomes.add(i < 32 ? "plains" : i < 48 ? "terralith:moonlight_grove" : "river");
+        }
+        PackedSection<String> section = PackedSection.of(biomes);
+        long[] data = section.packBiomes();
+        // Three biomes take 2 bits each: 32 per long, so two longs.
+        assertEquals(2, data.length);
+        PackedSection<String> back = PackedSection.unpackBiomes(section.palette(), data);
+        assertEquals(biomes, java.util.stream.IntStream.range(0, PackedSection.BIOME_SIZE).mapToObj(back::get).toList());
+        assertNull(PackedSection.of(java.util.Collections.nCopies(PackedSection.BIOME_SIZE, "plains")).packBiomes());
+    }
+
+    @Test
+    void unchangedStandInsGetTheirOriginalBack() {
+        List<String> disk = new ArrayList<>();
+        for (int i = 0; i < PackedSection.BIOME_SIZE; i++) {
+            disk.add(i % 2 == 0 ? "terralith:moonlight_grove" : "plains");
+        }
+        PackedSection<String> original = PackedSection.of(disk);
+        PackedSection<String> loaded = original.replace(b -> b.startsWith("terralith:"), "plains");
+
+        // /fillbiome turned spots 0 and 1 into a desert while the mod was missing.
+        List<String> edited = new ArrayList<>();
+        for (int i = 0; i < PackedSection.BIOME_SIZE; i++) {
+            edited.add(i < 2 ? "desert" : loaded.get(i));
+        }
+        PackedSection<String> saved = PackedSection.of(edited).restoreUnchanged(loaded, original);
+        for (int i = 0; i < PackedSection.BIOME_SIZE; i++) {
+            assertEquals(i < 2 ? "desert" : disk.get(i), saved.get(i), "spot " + i);
+        }
+    }
 }
