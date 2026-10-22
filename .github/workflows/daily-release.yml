@@ -3,8 +3,10 @@ name: Daily release
 # Once a day, releases the next version waiting in the queue. Versions are queued by pushing their
 # tag (v<version>, matching mod_version) ahead of time; pushing a tag only runs the Build workflow.
 # Each day the lowest tag that has no GitHub release yet is released, if the Build run for its commit
-# succeeded. If that run is still going, the day is skipped; if it failed, this workflow fails (so
-# GitHub sends a notice) and nothing is released until the tag is fixed. Never more than one a day.
+# succeeded. If that run is still going, the day is skipped. If it failed, its failed jobs are run once
+# more (a slow runner can time a game test out) and the day is skipped; if they fail again, this
+# workflow fails (so GitHub sends a notice) and nothing is released until the tag is fixed.
+# Never more than one a day.
 
 on:
   schedule:
@@ -13,7 +15,7 @@ on:
 
 permissions:
   contents: write
-  actions: read
+  actions: write
 
 concurrency:
   group: daily-release
@@ -50,7 +52,7 @@ jobs:
             echo "::error::$next points at a commit with mod_version $version."
             exit 1
           fi
-          runs=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow build.yml --commit "$sha" --limit 20 --json status,conclusion)
+          runs=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow build.yml --commit "$sha" --limit 20 --json databaseId,status,conclusion,attempt)
           if echo "$runs" | jq -e 'any(.[]; .status == "completed" and .conclusion == "success")' > /dev/null; then
             echo "Releasing $next ($sha)."
             echo "tag=$next" >> "$GITHUB_OUTPUT"
@@ -60,8 +62,14 @@ jobs:
             echo "::error::$next has no Build run. Push the tag again to start one."
             exit 1
           else
-            echo "::error::The Build run for $next failed; nothing is released until it passes."
-            exit 1
+            latest=$(echo "$runs" | jq -c 'max_by(.databaseId)')
+            if [ "$(echo "$latest" | jq '.attempt')" -lt 2 ]; then
+              gh run rerun "$(echo "$latest" | jq '.databaseId')" --failed --repo "$GITHUB_REPOSITORY"
+              echo "::warning::The Build run for $next failed; its failed jobs run again, trying again tomorrow."
+            else
+              echo "::error::The Build run for $next failed twice; nothing is released until it passes."
+              exit 1
+            fi
           fi
 
   release:
