@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "loader": "neoforge",
+  "savedAt": "2026-10-19T09:24:00+02:00",
+  "mods": {
+    "create": "6.0.4",
+    "minecraft": "1.21.1",
+    "worldsure": "0.1.0"
+  },
+  "counts": {
+    "create": {
+      "blocks": 120,
+      "blockEntities": 3,
+      "entities": 2
+    }
+  }
+}

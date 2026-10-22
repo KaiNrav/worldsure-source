@@ -49,6 +49,8 @@ Commands, for game masters: `/worldsure status`, `/worldsure backups`, `/worldsu
 
 ## Files and formats
 
+Every file Worldsure writes, and the rules for changing it, are in [docs/formats.md](docs/formats.md).
+
 `manifest.json` has a `"format"` number and `index.dat` starts with one. A file in an older format
 is upgraded when it is read (`Upgrades` in `common/`, one step per format). A file written by a
 newer Worldsure is never overwritten: the mods listed in a newer passport are still compared and the

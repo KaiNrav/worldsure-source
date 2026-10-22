@@ -1,0 +1,5 @@
+# Test fixtures of the frozen formats are bytes, not text.
+common/src/test/resources/formats/*.dat binary
+common/src/test/resources/formats/*.zip binary
+*.nbt binary
+*.png binary

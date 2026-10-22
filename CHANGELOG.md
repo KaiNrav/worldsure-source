@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0
+
+- The file formats are frozen for 1.x and written down in `docs/formats.md`: the passport (format 1),
+  the object counts (format 3, reading 1 and 2), the settings, backups, restore requests and the strict
+  mode acceptance. One file of each format, made by a separate script, is part of the tests, so a
+  version that stops reading any of them cannot be released.
+- A world whose passport was written by a newer Worldsure no longer shows as a first visit in the
+  pause menu.
+
 ## 0.8.0
 
 - Load tests. A game test sends 256 chunks holding blocks, chests and biomes of a removed mod through

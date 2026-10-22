@@ -235,13 +235,14 @@ public final class Worldsure {
 
         Optional<Check> check = check(worldDir, installed);
         if (check.isEmpty()) {
-            // Either nothing changed, or the world has no passport yet.
+            // Nothing changed, the world has no passport yet, or a newer Worldsure wrote one this one cannot read.
+            boolean firstVisit = !Files.exists(WorldManifest.path(worldDir));
             currentReview = review != null
                     ? new WorldReview(review.worldName(), review.savedAt(), review.entries(),
                             new WorldReview.Backup(WorldReview.BackupState.NOT_NEEDED, "", keep))
                     : new WorldReview(worldDir.getFileName().toString(), null,
                             WorldReview.entries(installed, installed, Map.of()),
-                            new WorldReview.Backup(WorldReview.BackupState.FIRST_VISIT, "", keep));
+                            new WorldReview.Backup(firstVisit ? WorldReview.BackupState.FIRST_VISIT : WorldReview.BackupState.NOT_NEEDED, "", keep));
             return List.of();
         }
         ModDiff diff = check.get().diff();
