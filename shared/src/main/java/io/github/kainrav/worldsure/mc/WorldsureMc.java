@@ -3,6 +3,7 @@ package io.github.kainrav.worldsure.mc;
 import io.github.kainrav.worldsure.Report;
 import io.github.kainrav.worldsure.Worldsure;
 import net.minecraft.ChatFormatting;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -34,6 +35,33 @@ public final class WorldsureMc {
         //#endif
     }
 
+    public static int chunkX(ChunkPos pos) {
+        //#if >=26.1
+        return pos.x();
+        //#else
+        //$ return pos.x;
+        //#endif
+    }
+
+    public static int chunkZ(ChunkPos pos) {
+        //#if >=26.1
+        return pos.z();
+        //#else
+        //$ return pos.z;
+        //#endif
+    }
+
+    /** The entity chunk tag without entities of removed mods, or as it was if that fails. */
+    public static CompoundTag keepMissingEntities(String dimension, CompoundTag chunkTag) {
+        try {
+            return MissingEntities.keepMissing(dimension, chunkTag);
+        } catch (RuntimeException e) {
+            // Never stand between the player and their chunk: load it as the game would.
+            Worldsure.LOG.error("Could not keep entities of removed mods of a chunk; loading it as the game would", e);
+            return chunkTag;
+        }
+    }
+
     public static Path worldDir(MinecraftServer server) {
         return server.getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize();
     }
@@ -52,6 +80,7 @@ public final class WorldsureMc {
     public static void onServerStopped(MinecraftServer server) {
         Worldsure.onWorldClosed(worldDir(server), Platform.get().loaderName(), Platform.get().installedMods());
         MissingBlocks.clear();
+        MissingEntities.clear();
     }
 
     public static void onPlayerJoin(ServerPlayer player, MinecraftServer server) {

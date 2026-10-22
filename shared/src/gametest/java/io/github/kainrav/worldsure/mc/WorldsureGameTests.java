@@ -49,8 +49,13 @@ public final class WorldsureGameTests {
         tests.put("passport_records_its_format", WorldsureGameTests::passportRecordsItsFormat);
         tests.put("placeholder_cannot_be_broken", WorldsureGameTests::placeholderCannotBeBroken);
         tests.put("missing_blocks_come_back", WorldsureGameTests::missingBlocksComeBack);
+        tests.put("missing_entities_come_back", EntityGameTests::missingEntitiesComeBack);
+        tests.put("entity_storage_keeps_missing_entities", EntityGameTests::entityStorageKeepsMissingEntities);
         return tests;
     }
+
+    /** Ticks a test may take. Test servers tick without pause, so this leaves real file reads and writes a few seconds. */
+    public static final int MAX_TICKS = 2400;
 
     /** The world the test server created got a passport of the current format, listing the running mods. */
     public static void passportRecordsItsFormat(GameTestHelper helper) {

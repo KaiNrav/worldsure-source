@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+- Mobs and other entities of a removed mod are kept. The game would skip them when their chunk
+  loads and forget them at the next save; Worldsure sets them aside instead and writes them back
+  every time the chunk is saved, so putting the mod back brings them back as they were.
+- A mob of a removed mod riding a known one (or the other way round) is kept too. A removed mod's
+  rider of a known mob comes back standing where it was rather than riding.
+- Entity counts per mod now include the entities set aside.
+- Optimize World and other tools reading the entity files see them untouched.
+
 ## 0.1.1
 
 - The world passport and the object counts now check the format number they are stored with, so

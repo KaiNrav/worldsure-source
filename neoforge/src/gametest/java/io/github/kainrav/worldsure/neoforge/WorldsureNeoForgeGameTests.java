@@ -13,6 +13,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
 //#else
+//$ import io.github.kainrav.worldsure.mc.EntityGameTests;
 //$ import net.minecraft.gametest.framework.GameTest;
 //$ import net.minecraft.gametest.framework.GameTestHelper;
 //$ import net.neoforged.neoforge.gametest.GameTestHolder;
@@ -20,8 +21,9 @@ import net.neoforged.neoforge.registries.RegisterEvent;
 //#endif
 
 /**
- * Hands the shared checks to NeoForge's game test server. Since 1.21.5 tests are registry entries;
- * before that they are annotated methods. All of them use the empty structure worldsure:empty.
+ * Hands the shared checks to NeoForge's game test server. Since 1.21.5 tests are registry entries,
+ * registered from {@link WorldsureGameTests#all()}; before that they are annotated methods, one per
+ * check. All of them use the empty structure worldsure:empty.
  */
 //#if >=1.21.5
 @EventBusSubscriber(modid = Worldsure.MOD_ID)
@@ -46,7 +48,7 @@ public final class WorldsureNeoForgeGameTests {
         var environment = event.registerEnvironment(id("default"));
         for (String name : WorldsureGameTests.all().keySet()) {
             event.registerTest(id(name), new FunctionGameTestInstance(ResourceKey.create(Registries.TEST_FUNCTION, id(name)),
-                    new TestData<>(environment, EMPTY, 100, 0, true)));
+                    new TestData<>(environment, EMPTY, WorldsureGameTests.MAX_TICKS, 0, true)));
         }
     }
 }
@@ -54,19 +56,29 @@ public final class WorldsureNeoForgeGameTests {
 //$ @GameTestHolder(Worldsure.MOD_ID)
 //$ @PrefixGameTestTemplate(false)
 //$ public final class WorldsureNeoForgeGameTests {
-//$     @GameTest(template = "empty")
+//$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
 //$     public static void passportRecordsItsFormat(GameTestHelper helper) {
 //$         WorldsureGameTests.passportRecordsItsFormat(helper);
 //$     }
 //$
-//$     @GameTest(template = "empty")
+//$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
 //$     public static void placeholderCannotBeBroken(GameTestHelper helper) {
 //$         WorldsureGameTests.placeholderCannotBeBroken(helper);
 //$     }
 //$
-//$     @GameTest(template = "empty")
+//$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
 //$     public static void missingBlocksComeBack(GameTestHelper helper) {
 //$         WorldsureGameTests.missingBlocksComeBack(helper);
+//$     }
+//$
+//$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+//$     public static void missingEntitiesComeBack(GameTestHelper helper) {
+//$         EntityGameTests.missingEntitiesComeBack(helper);
+//$     }
+//$
+//$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+//$     public static void entityStorageKeepsMissingEntities(GameTestHelper helper) {
+//$         EntityGameTests.entityStorageKeepsMissingEntities(helper);
 //$     }
 //$ }
 //#endif

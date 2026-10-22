@@ -5,7 +5,7 @@
   ${mixin_refmap}
   "compatibilityLevel": "JAVA_${mixin_java}",
   "mixins": [
-    "EntityStorageMixin",
+    ${extra_mixins}"EntityStorageMixin",
     "ChunkDataMixin"
   ],
   "client": [

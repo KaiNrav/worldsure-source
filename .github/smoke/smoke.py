@@ -1,14 +1,16 @@
 """
 End-to-end check on a real dedicated server, for one target such as 26.3:fabric:
 1. start a fresh world and stop it: the passport must be written;
-2. pretend a mod "fakemod" was removed: list it in the passport and turn the stone of one
-   chunk into fakemod:stone, the way a world looks after its mod is uninstalled;
+2. pretend a mod "fakemod" was removed: list it in the passport, turn the stone of one
+   chunk into fakemod:stone and an armor stand there into fakemod:mob, the way a world looks
+   after its mod is uninstalled;
 3. start again, edit that chunk and save: the world must be backed up, the change reported,
-   and fakemod:stone must still be on disk (placeholders restored), counted in the passport.
+   and fakemod:stone and fakemod:mob must still be on disk, counted in the passport.
 """
 import glob
 import json
 import os
+import re
 import socket
 import struct
 import subprocess
@@ -88,15 +90,19 @@ def run_server(*commands):
     return "".join(lines)
 
 
-def overworld_region():
+def overworld_region(kind="region"):
     other_dimensions = ("DIM-1", "DIM1", "the_nether", "the_end")
-    candidates = [p for p in glob.glob(os.path.join(WORLD, "**", "region", "r.0.0.mca"), recursive=True)
+    candidates = [p for p in glob.glob(os.path.join(WORLD, "**", kind, "r.0.0.mca"), recursive=True)
                   if not any(d in p for d in other_dimensions)]
     candidates.sort(key=len)
     if not candidates:
-        raise SystemExit("No overworld region file found")
-    log(f"region file: {os.path.relpath(candidates[0], WORLD)}")
+        raise SystemExit(f"No overworld {kind} file found")
+    log(f"{kind} file: {os.path.relpath(candidates[0], WORLD)}")
     return candidates[0]
+
+
+def entity_ids(chunk):
+    return [entity.value["id"].value for entity in chunk.value["Entities"].value]
 
 
 def block_id(entry):
@@ -130,7 +136,7 @@ def check(condition, message):
 def main():
     prepare()
 
-    run_server("forceload add 0 0")
+    run_server("forceload add 0 0", "summon minecraft:armor_stand 2 100 2 {NoGravity:1b,Invulnerable:1b}")
     manifest_path = os.path.join(WORLD, "worldsure", "manifest.json")
     check(os.path.isfile(manifest_path), "the passport is written on the first start")
     with open(manifest_path) as f:
@@ -150,10 +156,17 @@ def main():
             renamed += 1
     check(renamed > 0, f"chunk 0,0 has stone to turn into fakemod:stone ({renamed} sections)")
     nbt.write_chunk(region, 0, chunk)
+    entities_file = overworld_region("entities")
+    entity_chunk = nbt.read_chunk(entities_file, 0)
+    for entity in entity_chunk.value["Entities"].value:
+        if entity.value["id"].value == "minecraft:armor_stand":
+            entity.value["id"].value = "fakemod:mob"
+    check("fakemod:mob" in entity_ids(entity_chunk), f"chunk 0,0 has an armor stand to turn into fakemod:mob")
+    nbt.write_chunk(entities_file, 0, entity_chunk)
 
     output = run_server("forceload add 0 0", "setblock 1 200 1 minecraft:glass")
     check("Removed: fakemod 1.0.0" in output, "the removed mod is reported")
-    check("Kept " in output and "removed mods in chunk" in output, "fakemod:stone was swapped for placeholders on load")
+    check(re.search(r"Kept \d+ section\(s\)", output), "fakemod:stone was swapped for placeholders on load")
     check(glob.glob(os.path.join(RUN, "backups", "worldsure", "world_*.zip")), "the world was backed up before loading")
 
     chunk = nbt.read_chunk(region, 0)
@@ -161,10 +174,15 @@ def main():
     check("fakemod:stone" in names, "fakemod:stone is still on disk after the chunk was saved")
     check("worldsure:missing_block" not in names, "no placeholder reached the disk")
     check("minecraft:glass" in names, "the edit made while the mod was missing was saved too")
+    check(re.search(r"Kept \d+ entities of removed mods", output), "fakemod:mob was set aside on load")
+    ids = entity_ids(nbt.read_chunk(entities_file, 0))
+    check(ids.count("fakemod:mob") == 1, f"fakemod:mob is still on disk, once, after its chunk was saved ({ids})")
     with open(manifest_path) as f:
         manifest = json.load(f)
     blocks = manifest.get("counts", {}).get("fakemod", {}).get("blocks", 0)
     check(blocks > 0, f"the passport counts fakemod blocks ({blocks})")
+    mobs = manifest.get("counts", {}).get("fakemod", {}).get("entities", 0)
+    check(mobs == 1, f"the passport counts the fakemod mob ({mobs})")
     check("fakemod" not in manifest["mods"], "the passport now lists the mods actually installed")
     log("all checks passed")
 

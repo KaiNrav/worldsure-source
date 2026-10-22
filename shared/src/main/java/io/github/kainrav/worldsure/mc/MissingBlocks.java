@@ -2,6 +2,7 @@ package io.github.kainrav.worldsure.mc;
 
 import io.github.kainrav.worldsure.PackedSection;
 import io.github.kainrav.worldsure.Worldsure;
+import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -100,12 +101,17 @@ public final class MissingBlocks {
 
     /** Whether an id parses but names no registered block (or block entity type). */
     private static boolean isUnknown(String text, boolean block) {
+        return isUnknown(text, block ? BuiltInRegistries.BLOCK : BuiltInRegistries.BLOCK_ENTITY_TYPE);
+    }
+
+    /** Whether an id parses but names nothing in a registry, the way objects of a removed mod look. */
+    static boolean isUnknown(String text, Registry<?> registry) {
         //#if >=1.21.11
         Identifier id = Identifier.tryParse(text);
         //#else
         //$ ResourceLocation id = ResourceLocation.tryParse(text);
         //#endif
-        return id != null && !(block ? BuiltInRegistries.BLOCK : BuiltInRegistries.BLOCK_ENTITY_TYPE).containsKey(id);
+        return id != null && !registry.containsKey(id);
     }
 
     private static boolean isPlaceholder(Tag entry) {

@@ -76,6 +76,8 @@ def props = [
         fabric_loader_min: fabric_loader_min,
         neoforge_min     : findProperty('neoforge_min') ?: '',
         forge_min        : findProperty('forge_min') ?: '',
+        // Mixins whose target only exists in some versions; SimpleRegionStorage came in 1.20.5.
+        extra_mixins     : rootProject.ext.compareMinecraft(minecraft, '1.20.5') >= 0 ? '"SimpleRegionStorageMixin", ' : '',
         // NeoForge for 26.x reads a square iconFile; older versions only know logoFile.
         icon_key         : modern ? 'iconFile' : 'logoFile',
 ]
