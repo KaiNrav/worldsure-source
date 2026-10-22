@@ -137,8 +137,66 @@ public final class Worldsure {
         return Optional.of(result);
     }
 
-    /** {@link #restorePending} for a dedicated server, whose world folder is level-name in server.properties. */
+    /** The file a server admin creates to let a strict server start once with removed or downgraded mods. */
+    public static final String ACCEPT_FILE = "accept-changes";
+
+    /**
+     * Strict mode for dedicated servers: why the server must not start, or empty when it may. It may when
+     * strict mode is off, the world is new, no mod was removed or downgraded, or the change was accepted by
+     * creating {@code <world>/worldsure/accept-changes}, which is used up here.
+     */
+    public static Optional<String> strictRefusal(Path worldDir, Path configDir, List<ModInfo> installed) {
+        if (!loadConfig(configDir).strict()) {
+            return Optional.empty();
+        }
+        String worldName = worldDir.getFileName().toString();
+        List<ModInfo> saved;
+        try {
+            WorldManifest passport = WorldManifest.read(worldDir).orElse(null);
+            if (passport == null) {
+                return Optional.empty();
+            }
+            saved = passport.mods();
+        } catch (IOException e) {
+            LOG.error("Strict mode cannot read the passport of world {}; starting anyway", worldName, e);
+            return Optional.empty();
+        }
+        ModDiff diff = ModDiff.between(saved, installed);
+        // Updates are normal on a server; only a removed or older mod stops it.
+        if (diff.removed().isEmpty() && !diff.hasDowngrade()) {
+            return Optional.empty();
+        }
+        Path accept = worldDir.resolve(WorldManifest.DIRECTORY).resolve(ACCEPT_FILE);
+        if (Files.exists(accept)) {
+            try {
+                Files.delete(accept);
+            } catch (IOException e) {
+                LOG.warn("Could not delete {}; delete it by hand so the next change is caught again", accept, e);
+            }
+            LOG.warn("World {}: the mod changes were accepted with {}; starting", worldName, ACCEPT_FILE);
+            return Optional.empty();
+        }
+        StringBuilder message = new StringBuilder("Worldsure strict mode: world " + worldName
+                + " was last played with mods that are now missing or older, so the server does not start.");
+        for (ModInfo mod : diff.removed()) {
+            message.append("\n  removed: ").append(mod.id()).append(' ').append(mod.version());
+        }
+        for (ModDiff.VersionChange change : diff.changed().stream().filter(ModDiff.VersionChange::isDowngrade).toList()) {
+            message.append("\n  downgraded: ").append(change.id()).append(' ').append(change.oldVersion())
+                    .append(" -> ").append(change.newVersion());
+        }
+        message.append("\nPut the mods back, or accept the change by creating the file ").append(accept)
+                .append(" and starting again (a backup is made before the world loads).");
+        return Optional.of(message.toString());
+    }
+
+    /** {@link #restorePending} for a dedicated server. */
     public static Optional<String> restorePendingOnServer(Path gameDir) {
+        return restorePending(serverWorldDir(gameDir), gameDir);
+    }
+
+    /** A dedicated server's world folder: level-name in server.properties, "world" by default. */
+    public static Path serverWorldDir(Path gameDir) {
         String levelName = "world";
         Path properties = gameDir.resolve("server.properties");
         if (Files.isRegularFile(properties)) {
@@ -147,10 +205,10 @@ public final class Worldsure {
                 props.load(in);
                 levelName = props.getProperty("level-name", levelName).trim();
             } catch (IOException e) {
-                LOG.error("Could not read server.properties; looking for a restore of world {}", levelName, e);
+                LOG.error("Could not read server.properties; assuming the world is in {}", levelName, e);
             }
         }
-        return restorePending(gameDir.resolve(levelName), gameDir);
+        return gameDir.resolve(levelName);
     }
 
     /** Remembers what the player chose on the confirmation screen, so the server start does not ask or back up again. */
@@ -322,6 +380,35 @@ public final class Worldsure {
             scan = next;
             next.start();
         }
+    }
+
+    /** Whether the open world is being counted in the background right now. */
+    public static synchronized boolean isScanning() {
+        return scan != null && scan.isRunning();
+    }
+
+    /** Forgets which dimensions were counted and counts the whole world again in the background. */
+    public static synchronized void rescan(java.util.function.Function<CountIndex, WorldScan> scanFactory) {
+        stopScan();
+        counts.forgetScans();
+        startScan(scanFactory);
+    }
+
+    /** Backs a world up now, whatever autoBackup says; keeps keepBackups copies. For /worldsure backup. */
+    public static Report.BackupResult backupNow(Path worldDir, Path gameDir, Path configDir) {
+        try {
+            Path zip = WorldBackup.create(worldDir, gameDir, loadConfig(configDir).keepBackups(), LocalDateTime.now());
+            LOG.info("Backed up world {} on request to {}", worldDir.getFileName(), zip.getFileName());
+            return Report.BackupResult.created(gameDir.relativize(zip));
+        } catch (IOException | RuntimeException e) {
+            LOG.error("World backup failed", e);
+            return Report.BackupResult.failed(e.getMessage());
+        }
+    }
+
+    /** The settings, read again from disk. */
+    public static WorldsureConfig config(Path configDir) {
+        return loadConfig(configDir);
     }
 
     private static void stopScan() {

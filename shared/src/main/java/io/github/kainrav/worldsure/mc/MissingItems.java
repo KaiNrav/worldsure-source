@@ -29,7 +29,9 @@ import java.util.Map;
  * disk never hold a placeholder. Putting the mod back brings the items back wherever they were moved.
  *
  * <p>A placeholder is a single item that does not stack, so two kept stacks never merge into one
- * that could only carry one of them. Its tooltip names the item and how many it holds.
+ * that could only carry one of them. Its tooltip names the item and how many it holds. In server-only
+ * mode the placeholder is a vanilla barrier named after the item, marked as one of a kind so that
+ * barriers never stack either.
  */
 public final class MissingItems {
     //#if >=1.21.11
@@ -42,6 +44,7 @@ public final class MissingItems {
     public static final String PLACEHOLDER_ID = Worldsure.MOD_ID + ":missing_item";
     /** The key under the placeholder's own data that holds the original stack. */
     static final String ORIGINAL = "worldsure_original";
+    private static final String NONCE = "worldsure_id";
 
     //#if >=1.20.5
     private static final String COUNT = "count";
@@ -77,8 +80,10 @@ public final class MissingItems {
         return MissingBlocks.isUnknown(id, BuiltInRegistries.ITEM);
     }
 
+    /** Worldsure's own placeholder, or a barrier carrying a stack (server-only mode). */
     private static boolean isPlaceholder(CompoundTag stack) {
-        return PLACEHOLDER_ID.equals(Nbt.stringOrEmpty(stack, "id"));
+        String id = Nbt.stringOrEmpty(stack, "id");
+        return PLACEHOLDER_ID.equals(id) || (Placeholders.VANILLA_ITEM.equals(id) && original(stack) != null);
     }
 
     /** The stack a placeholder carries, or null if it carries none (one made by a command, say). */
@@ -95,19 +100,38 @@ public final class MissingItems {
     /** A placeholder carrying a copy of {@code stack}, in the slot the stack was in. */
     static CompoundTag placeholderFor(CompoundTag stack) {
         CompoundTag original = stack.copy();
+        boolean vanilla = Placeholders.serverOnly();
         CompoundTag placeholder = new CompoundTag();
-        placeholder.putString("id", PLACEHOLDER_ID);
+        placeholder.putString("id", vanilla ? Placeholders.VANILLA_ITEM : PLACEHOLDER_ID);
+        // Makes every placeholder one of a kind, so even two identical kept stacks never merge.
+        String nonce = java.util.UUID.randomUUID().toString();
+        String name = Nbt.stringOrEmpty(stack, "id") + " ×" + stackSize(stack) + " (removed mod)";
         //#if >=1.20.5
         placeholder.putInt(COUNT, 1);
         CompoundTag custom = new CompoundTag();
         custom.put(ORIGINAL, original);
+        custom.putString(NONCE, nonce);
         CompoundTag components = new CompoundTag();
         components.put(CUSTOM_DATA, custom);
+        if (vanilla) {
+            components.putInt("minecraft:max_stack_size", 1);
+            //#if >=1.21.5
+            components.putString("minecraft:custom_name", name);
+            //#else
+            //$ components.putString("minecraft:custom_name", new com.google.gson.JsonPrimitive(name).toString());
+            //#endif
+        }
         placeholder.put(DATA, components);
         //#else
         //$ placeholder.putByte(COUNT, (byte) 1);
         //$ CompoundTag data = new CompoundTag();
         //$ data.put(ORIGINAL, original);
+        //$ data.putString(NONCE, nonce);
+        //$ if (vanilla) {
+        //$     CompoundTag display = new CompoundTag();
+        //$     display.putString("Name", new com.google.gson.JsonPrimitive(name).toString());
+        //$     data.put("display", display);
+        //$ }
         //$ placeholder.put(DATA, data);
         //#endif
         copySlot(stack, placeholder);
@@ -152,7 +176,7 @@ public final class MissingItems {
                     made[0]++;
                     return placeholderFor(compound);
                 }
-                if (PLACEHOLDER_ID.equals(id)) {
+                if (isPlaceholder(compound)) {
                     CompoundTag original = original(compound);
                     if (original == null || isUnknownItem(Nbt.stringOrEmpty(original, "id"))) {
                         made[0]++;

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.0
+
+- **Server-only mode** (`serverOnly=true` in `config/worldsure.properties`): Worldsure registers no
+  block or item of its own, so players can join without it. Blocks of removed mods are then kept as
+  bedrock and items as barriers named after the item; on save only the spots that held a missing
+  block get it back, so real bedrock and bedrock players place stay bedrock.
+- **Strict mode** (`strict=true`) for dedicated servers: when a mod was removed or downgraded, the
+  server refuses to start and says which mods and how to go on: put them back, or create
+  `<world>/worldsure/accept-changes` to start once anyway (after the usual backup).
+- New commands for game masters: `/worldsure status` (changes at start, what the world holds per
+  mod, settings, backups), `/worldsure backup` (save and back up now) and `/worldsure scan` (count
+  the whole world again).
+- Settings added by a new version are now written into an existing `worldsure.properties`, with
+  their explanation.
+- Kept items no longer stack even when two kept stacks are identical.
+
 ## 0.5.0
 
 - Backups can be restored from the game. The Worldsure screen has a **Backups** button, both

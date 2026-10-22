@@ -9,7 +9,9 @@ End-to-end check on a real dedicated server, for one target such as 26.3:fabric:
    and fakemod:stone, fakemod:mob, fakemod:gem and fakemod:grove must still be on disk, counted
    in the passport;
 4. ask for that backup with /worldsure restore: the server must stop by itself, and on the next
-   start the world must be the backup again, the replaced world kept next to it.
+   start the world must be the backup again, the replaced world kept next to it;
+5. in strict mode, with a mod gone from the passport, the server must refuse to start until the
+   change is accepted with <world>/worldsure/accept-changes.
 """
 import glob
 import json
@@ -68,9 +70,10 @@ def rcon(*commands):
     s.close()
 
 
-def run_server(*commands, finish=("save-all flush", "stop")):
+def run_server(*commands, finish=("save-all flush", "stop"), wait_for=None):
     """Starts the server, runs commands over RCON once it is up, stops it and returns its output.
-    With finish=() the commands themselves must stop the server."""
+    With finish=() the commands themselves must stop the server. With wait_for, the server is only
+    stopped once a line matching that pattern was printed (or after 3 minutes)."""
     task = f":{TARGET}:runServer"
     proc = subprocess.Popen([GRADLE, task, f"-Ptargets={MINECRAFT}", "--console=plain"], cwd=ROOT, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True)
@@ -89,10 +92,29 @@ def run_server(*commands, finish=("save-all flush", "stop")):
     if not ready.wait(900):
         proc.kill()
         raise SystemExit(f"{TARGET} server did not start")
-    rcon(*commands, *finish)
+    rcon(*commands)
+    if wait_for:
+        deadline = time.time() + 180
+        while time.time() < deadline and not any(re.search(wait_for, line) for line in list(lines)):
+            time.sleep(1)
+    if finish:
+        rcon(*finish)
     proc.wait(300)
     reader.join(30)
     return "".join(lines)
+
+
+def start_expecting_failure():
+    """Starts the server, which is expected to stop on its own before it is up; returns its output."""
+    proc = subprocess.Popen([GRADLE, f":{TARGET}:runServer", f"-Ptargets={MINECRAFT}", "--console=plain"], cwd=ROOT,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True)
+    try:
+        output, _ = proc.communicate(timeout=900)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        raise SystemExit(f"{TARGET} server neither started nor stopped")
+    print(output, flush=True)
+    return output
 
 
 def overworld_region(kind="region"):
@@ -155,6 +177,8 @@ def palette_names(chunk):
 
 def check(condition, message):
     if not condition:
+        # The ::error:: line becomes an annotation on the CI run, readable without the logs.
+        print(f"::error::smoke {TARGET}: FAILED: {message}", flush=True)
         raise SystemExit(f"FAILED: {message}")
     log(f"ok: {message}")
 
@@ -208,7 +232,9 @@ def main():
     nbt.write_chunk(entities_file, 0, entity_chunk)
     os.remove(os.path.join(WORLD, "worldsure", "index.dat"))
 
-    output = run_server("forceload add 0 0", "setblock 1 200 1 minecraft:glass")
+    # The background count runs after the start; wait for it before stopping.
+    output = run_server("forceload add 0 0", "setblock 1 200 1 minecraft:glass",
+                        wait_for=r"Counted \d+ chunks and \d+ entity chunks of minecraft:overworld")
     check("Removed: fakemod 1.0.0" in output, "the removed mod is reported")
     check(re.search(r"Kept \d+ section\(s\)", output), "fakemod:stone was swapped for placeholders on load")
     check(glob.glob(os.path.join(RUN, "backups", "worldsure", "world_*.zip")), "the world was backed up before loading")
@@ -246,6 +272,21 @@ def main():
     names = palette_names(nbt.read_chunk(overworld_region(), 0))
     check("minecraft:glass" not in names, "the world is the backup again: the edit made after it is gone")
     check("fakemod:stone" in names, "the restored world still holds fakemod:stone")
+
+    with open(os.path.join(RUN, "config", "worldsure.properties"), "a") as f:
+        f.write("\nstrict=true\n")
+    with open(manifest_path) as f:
+        manifest = json.load(f)
+    manifest["mods"]["fakemod2"] = "2.0.0"
+    with open(manifest_path, "w") as f:
+        json.dump(manifest, f)
+    output = start_expecting_failure()
+    check("Worldsure strict mode" in output and "removed: fakemod2 2.0.0" in output, "strict mode refused to start with fakemod2 gone")
+    check("RCON running on" not in output, "the refused server never came up")
+    open(os.path.join(WORLD, "worldsure", "accept-changes"), "w").close()
+    output = run_server()
+    check("the mod changes were accepted" in output, "accept-changes let the server start once")
+    check(not os.path.exists(os.path.join(WORLD, "worldsure", "accept-changes")), "the acceptance was used up")
     log("all checks passed")
 
 

@@ -57,6 +57,9 @@ public final class WorldsureGameTests {
         tests.put("missing_biomes_come_back", ScanGameTests::missingBiomesComeBack);
         tests.put("scan_counts_stored_chunks", ScanGameTests::scanCountsStoredChunks);
         tests.put("commands_list_and_ask_for_restore", BackupGameTests::commandsListAndAskForRestore);
+        tests.put("server_only_blocks_use_bedrock", ServerModeGameTests::serverOnlyBlocksUseBedrock);
+        tests.put("server_only_items_use_barriers", ServerModeGameTests::serverOnlyItemsUseBarriers);
+        tests.put("status_backup_and_scan_commands", ServerModeGameTests::statusBackupAndScanCommands);
         return tests;
     }
 

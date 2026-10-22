@@ -161,6 +161,15 @@ public record PackedSection<E>(List<E> palette, int[] indices) {
         return of(entries);
     }
 
+    /** Puts the original entries back at the given positions. */
+    public PackedSection<E> restoreAt(boolean[] positions, PackedSection<E> original) {
+        List<E> entries = new ArrayList<>(size());
+        for (int i = 0; i < size(); i++) {
+            entries.add(positions[i] ? original.get(i) : get(i));
+        }
+        return of(entries);
+    }
+
     /**
      * Puts the original entries back wherever this section still holds what it was given at load,
      * and keeps every position that changed since.

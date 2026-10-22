@@ -40,6 +40,11 @@ public final class WorldScan {
         this.decompressor = decompressor;
     }
 
+    /** Whether the scan thread is still counting. */
+    public synchronized boolean isRunning() {
+        return thread != null && thread.isAlive();
+    }
+
     /** Whether some dimension still needs scanning. */
     public boolean isNeeded() {
         return dimensions.stream().anyMatch(dimension -> !index.isScanned(dimension.id()));

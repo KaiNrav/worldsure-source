@@ -36,7 +36,16 @@ Worldsure itself is always safe.
 A restore never deletes anything: the world it replaces is renamed to
 `<world>_before_restore_<time>` next to it.
 
-Settings live in `config/worldsure.properties` (`autoBackup`, `keepBackups`).
+Settings live in `config/worldsure.properties`:
+
+- `autoBackup`, `keepBackups`: the backup before a changed world loads, and how many to keep;
+- `serverOnly`: on a server, keep blocks and items of removed mods as bedrock and barriers instead of
+  Worldsure's own block and item, so players can join without Worldsure (Fabric and NeoForge);
+- `strict`: a dedicated server refuses to start when a mod was removed or downgraded, until the
+  change is accepted by creating `<world>/worldsure/accept-changes`.
+
+Commands, for game masters: `/worldsure status`, `/worldsure backups`, `/worldsure backup` (now),
+`/worldsure scan` (count again); for owners: `/worldsure restore <file>`.
 
 ## Files and formats
 
@@ -67,8 +76,10 @@ reach.
 
 ## Installing
 
-Put the jar for your loader and Minecraft version, e.g. `worldsure-fabric-0.1.1+1.21.1.jar` (with
-Fabric API), `worldsure-neoforge-0.1.1+26.3.jar` or `worldsure-forge-0.1.1+1.20.1.jar`, into `mods/`. Worldsure adds a block, so a server and the clients joining it all need it.
+Put the jar for your loader and Minecraft version, e.g. `worldsure-fabric-0.6.0+1.21.1.jar` (with
+Fabric API), `worldsure-neoforge-0.6.0+26.3.jar` or `worldsure-forge-0.6.0+1.20.1.jar`, into `mods/`.
+Worldsure adds a block and an item, so by default a server and the clients joining it all need it;
+with `serverOnly=true` on a Fabric or NeoForge server, players can join without it.
 
 ## Building
 
@@ -80,7 +91,7 @@ Gradle runs on JDK 25 (`gradle/gradle-daemon-jvm.properties`); the JDKs 17 and 2
 ```
 
 builds all twelve jars into `versions/<minecraft>/<loader>/build/libs`, named like
-`worldsure-fabric-0.1.1+26.3.jar`. `-Ptargets=26.3,1.21.1` builds only those Minecraft versions;
+`worldsure-fabric-0.6.0+26.3.jar`. `-Ptargets=26.3,1.21.1` builds only those Minecraft versions;
 `./gradlew :common:test -PcommonOnly` runs the core tests without downloading Minecraft.
 `./gradlew :1.21.1:fabric:runClient` (or `runServer`) starts the game with the mod; add
 `-PquickPlay=<world>` to open a single player world right away.

@@ -47,7 +47,6 @@ public final class MissingBlocks {
     //$ public static final ResourceKey<Block> KEY = ResourceKey.create(Registries.BLOCK, new ResourceLocation(Worldsure.MOD_ID, "missing_block"));
     //#endif
     private static final String PLACEHOLDER_NAME = Worldsure.MOD_ID + ":missing_block";
-    private static final Tag PLACEHOLDER = placeholder();
 
     /** dimension + chunk -> what the chunk held before placeholders went in */
     private static final Map<String, Stash> STASHES = new ConcurrentHashMap<>();
@@ -79,14 +78,19 @@ public final class MissingBlocks {
                 .noLootTable());
     }
 
-    /** The palette entry of the placeholder block, which has a single state. */
+    /** The block missing blocks turn into: Worldsure's own, or bedrock in server-only mode. */
+    private static String placeholderName() {
+        return Placeholders.serverOnly() ? Placeholders.VANILLA_BLOCK : PLACEHOLDER_NAME;
+    }
+
+    /** The palette entry of the placeholder block; both kinds have a single state. */
     private static Tag placeholder() {
         //#if >=26.3
         // Since 26.3 a block with a single state is stored as its bare id; others as {id, properties}.
-        return StringTag.valueOf(PLACEHOLDER_NAME);
+        return StringTag.valueOf(placeholderName());
         //#else
         //$ CompoundTag entry = new CompoundTag();
-        //$ entry.putString("Name", PLACEHOLDER_NAME);
+        //$ entry.putString("Name", placeholderName());
         //$ return entry;
         //#endif
     }
@@ -129,8 +133,10 @@ public final class MissingBlocks {
         return id != null && !registry.containsKey(id);
     }
 
+    /** Either kind of placeholder; bedrock only counts where the section held a missing block (see restore). */
     private static boolean isPlaceholder(Tag entry) {
-        return PLACEHOLDER_NAME.equals(blockId(entry));
+        String id = blockId(entry);
+        return PLACEHOLDER_NAME.equals(id) || Placeholders.VANILLA_BLOCK.equals(id);
     }
 
     private static boolean isMissingBlockEntity(CompoundTag tag) {
@@ -224,7 +230,7 @@ public final class MissingBlocks {
             int y = Nbt.byteOr(section, "Y", (byte) 0);
             PackedSection<Tag> original = originals.get(y);
             if (original != null) {
-                store(Nbt.compound(section, "block_states").orElseThrow(), original.replace(MissingBlocks::isMissing, PLACEHOLDER));
+                store(Nbt.compound(section, "block_states").orElseThrow(), original.replace(MissingBlocks::isMissing, placeholder()));
             }
             List<PackedSection<Tag>> biome = biomes.get(y);
             if (biome != null) {
@@ -288,16 +294,24 @@ public final class MissingBlocks {
                 continue;
             }
             PackedSection<Tag> current = read(blockStates);
-            if (!current.contains(MissingBlocks::isPlaceholder)) {
-                continue;
+            // A spot comes back only where the disk held a missing block and a placeholder still stands, so
+            // real bedrock (and bedrock a player placed) stays bedrock in server-only mode.
+            boolean[] missing = new boolean[original.palette().size()];
+            for (int e = 0; e < missing.length; e++) {
+                missing[e] = isMissing(original.palette().get(e));
             }
             boolean[] positions = new boolean[PackedSection.SIZE];
+            boolean any = false;
             for (int p = 0; p < PackedSection.SIZE; p++) {
-                positions[p] = isPlaceholder(current.get(p));
+                positions[p] = missing[original.indices()[p]] && isPlaceholder(current.get(p));
+                any |= positions[p];
+            }
+            if (!any) {
+                continue;
             }
             placeholderPositions.put(y, positions);
             stillNeeded.put(y, original);
-            store(blockStates, current.restore(MissingBlocks::isPlaceholder, original));
+            store(blockStates, current.restoreAt(positions, original));
         }
 
         List<CompoundTag> entitiesStillNeeded = new ArrayList<>();

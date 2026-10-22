@@ -2,6 +2,7 @@ package io.github.kainrav.worldsure.fabric;
 
 import io.github.kainrav.worldsure.mc.EntityGameTests;
 import io.github.kainrav.worldsure.mc.WorldsureGameTests;
+import io.github.kainrav.worldsure.mc.ServerModeGameTests;
 import io.github.kainrav.worldsure.mc.BackupGameTests;
 import io.github.kainrav.worldsure.mc.ScanGameTests;
 import io.github.kainrav.worldsure.mc.ItemGameTests;
@@ -119,5 +120,32 @@ public final class WorldsureFabricGameTests {
     //#endif
     public void commandsListAndAskForRestore(GameTestHelper helper) {
         BackupGameTests.commandsListAndAskForRestore(helper);
+    }
+
+    //#if >=1.21.5
+    @GameTest(maxTicks = WorldsureGameTests.MAX_TICKS)
+    //#else
+    //$ @GameTest(template = EMPTY_STRUCTURE, timeoutTicks = WorldsureGameTests.MAX_TICKS)
+    //#endif
+    public void serverOnlyBlocksUseBedrock(GameTestHelper helper) {
+        ServerModeGameTests.serverOnlyBlocksUseBedrock(helper);
+    }
+
+    //#if >=1.21.5
+    @GameTest(maxTicks = WorldsureGameTests.MAX_TICKS)
+    //#else
+    //$ @GameTest(template = EMPTY_STRUCTURE, timeoutTicks = WorldsureGameTests.MAX_TICKS)
+    //#endif
+    public void serverOnlyItemsUseBarriers(GameTestHelper helper) {
+        ServerModeGameTests.serverOnlyItemsUseBarriers(helper);
+    }
+
+    //#if >=1.21.5
+    @GameTest(maxTicks = WorldsureGameTests.MAX_TICKS)
+    //#else
+    //$ @GameTest(template = EMPTY_STRUCTURE, timeoutTicks = WorldsureGameTests.MAX_TICKS)
+    //#endif
+    public void statusBackupAndScanCommands(GameTestHelper helper) {
+        ServerModeGameTests.statusBackupAndScanCommands(helper);
     }
 }

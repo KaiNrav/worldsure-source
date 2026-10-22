@@ -4,6 +4,7 @@ import io.github.kainrav.worldsure.ModInfo;
 import io.github.kainrav.worldsure.Worldsure;
 import io.github.kainrav.worldsure.mc.MissingBlocks;
 import io.github.kainrav.worldsure.mc.MissingItems;
+import io.github.kainrav.worldsure.mc.Placeholders;
 import io.github.kainrav.worldsure.mc.Platform;
 import io.github.kainrav.worldsure.mc.WorldsureCommands;
 import io.github.kainrav.worldsure.mc.WorldsureMc;
@@ -30,10 +31,13 @@ import java.util.List;
 public final class WorldsureNeoForge implements Platform {
     public WorldsureNeoForge(IEventBus modBus) {
         Platform.set(this);
-        modBus.addListener(RegisterEvent.class, event ->
-                event.register(Registries.BLOCK, helper -> helper.register(MissingBlocks.KEY, MissingBlocks.create())));
-        modBus.addListener(RegisterEvent.class, event ->
-                event.register(Registries.ITEM, helper -> helper.register(MissingItems.KEY, MissingItems.create())));
+        WorldsureMc.init(configDir());
+        if (!Placeholders.serverOnly()) {
+            modBus.addListener(RegisterEvent.class, event ->
+                    event.register(Registries.BLOCK, helper -> helper.register(MissingBlocks.KEY, MissingBlocks.create())));
+            modBus.addListener(RegisterEvent.class, event ->
+                    event.register(Registries.ITEM, helper -> helper.register(MissingItems.KEY, MissingItems.create())));
+        }
         // ServerAboutToStartEvent fires before the levels load, so the backup sees the world as it was on disk.
         NeoForge.EVENT_BUS.addListener(ServerAboutToStartEvent.class, event -> WorldsureMc.onServerStarting(event.getServer()));
         NeoForge.EVENT_BUS.addListener(ServerStartedEvent.class, event -> WorldsureMc.onServerStarted(event.getServer()));
@@ -51,7 +55,7 @@ public final class WorldsureNeoForge implements Platform {
         //#endif
             WorldsureNeoForgeClient.init();
         } else {
-            WorldsureMc.onDedicatedServerInit(gameDir());
+            WorldsureMc.onDedicatedServerInit(gameDir(), configDir());
         }
     }
 

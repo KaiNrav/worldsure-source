@@ -3,6 +3,7 @@ package io.github.kainrav.worldsure.forge;
 import io.github.kainrav.worldsure.Worldsure;
 import io.github.kainrav.worldsure.mc.EntityGameTests;
 import io.github.kainrav.worldsure.mc.WorldsureGameTests;
+import io.github.kainrav.worldsure.mc.ServerModeGameTests;
 import io.github.kainrav.worldsure.mc.BackupGameTests;
 import io.github.kainrav.worldsure.mc.ScanGameTests;
 import io.github.kainrav.worldsure.mc.ItemGameTests;
@@ -71,5 +72,20 @@ public final class WorldsureForgeGameTests {
     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
     public static void commandsListAndAskForRestore(GameTestHelper helper) {
         BackupGameTests.commandsListAndAskForRestore(helper);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+    public static void serverOnlyBlocksUseBedrock(GameTestHelper helper) {
+        ServerModeGameTests.serverOnlyBlocksUseBedrock(helper);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+    public static void serverOnlyItemsUseBarriers(GameTestHelper helper) {
+        ServerModeGameTests.serverOnlyItemsUseBarriers(helper);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+    public static void statusBackupAndScanCommands(GameTestHelper helper) {
+        ServerModeGameTests.statusBackupAndScanCommands(helper);
     }
 }

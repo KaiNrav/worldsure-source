@@ -37,7 +37,10 @@ On Fabric, Fabric API is required.
 
 ## Good to know
 
-- Install it on both the server and the clients, since it adds a block.
-- Settings: `config/worldsure.properties` (`autoBackup`, `keepBackups`).
+- Install it on both the server and the clients, since it adds a block and an item, or set
+  `serverOnly=true` on a Fabric or NeoForge server so players can join without it.
+- Servers: `/worldsure status`, `backups`, `backup`, `restore` and `scan`; `strict=true` refuses to
+  start a server whose mods were removed until the change is accepted.
+- Settings: `config/worldsure.properties` (`autoBackup`, `keepBackups`, `serverOnly`, `strict`).
 
 Source code and issues: https://github.com/KaiNrav/worldsure-source

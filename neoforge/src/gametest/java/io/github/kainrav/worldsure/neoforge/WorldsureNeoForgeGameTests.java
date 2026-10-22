@@ -14,6 +14,7 @@ import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
 //#else
 //$ import io.github.kainrav.worldsure.mc.EntityGameTests;
+//$ import io.github.kainrav.worldsure.mc.ServerModeGameTests;
 //$ import io.github.kainrav.worldsure.mc.BackupGameTests;
 //$ import io.github.kainrav.worldsure.mc.ScanGameTests;
 //$ import io.github.kainrav.worldsure.mc.ItemGameTests;
@@ -112,6 +113,21 @@ public final class WorldsureNeoForgeGameTests {
 //$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
 //$     public static void commandsListAndAskForRestore(GameTestHelper helper) {
 //$         BackupGameTests.commandsListAndAskForRestore(helper);
+//$     }
+//$
+//$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+//$     public static void serverOnlyBlocksUseBedrock(GameTestHelper helper) {
+//$         ServerModeGameTests.serverOnlyBlocksUseBedrock(helper);
+//$     }
+//$
+//$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+//$     public static void serverOnlyItemsUseBarriers(GameTestHelper helper) {
+//$         ServerModeGameTests.serverOnlyItemsUseBarriers(helper);
+//$     }
+//$
+//$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+//$     public static void statusBackupAndScanCommands(GameTestHelper helper) {
+//$         ServerModeGameTests.statusBackupAndScanCommands(helper);
 //$     }
 //$ }
 //#endif

@@ -2,6 +2,7 @@ package io.github.kainrav.worldsure.mc;
 
 import io.github.kainrav.worldsure.Report;
 import io.github.kainrav.worldsure.Worldsure;
+import io.github.kainrav.worldsure.WorldsureConfig;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -14,6 +15,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.storage.LevelResource;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.function.Predicate;
 
@@ -80,15 +82,35 @@ public final class WorldsureMc {
         return server.getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize();
     }
 
+    /** When the mod loads, before anything is registered: reads which kind of placeholders to use. */
+    public static void init(Path configDir) {
+        try {
+            Placeholders.setServerOnly(WorldsureConfig.load(configDir).serverOnly());
+        } catch (IOException e) {
+            Worldsure.LOG.error("Could not read {}; using defaults", WorldsureConfig.FILE_NAME, e);
+        }
+        if (Placeholders.serverOnly()) {
+            Worldsure.LOG.info("Server-only mode: blocks and items of removed mods are kept as bedrock and barriers");
+        }
+    }
+
     /**
      * When a dedicated server's mods load, before it reads its world: restores the backup asked for with
-     * /worldsure restore.
+     * /worldsure restore, then, in strict mode, refuses to go on when mods were removed or downgraded.
+     *
+     * @throws IllegalStateException to stop the server in strict mode, with what changed and how to accept it
      */
-    public static void onDedicatedServerInit(Path gameDir) {
+    public static void onDedicatedServerInit(Path gameDir, Path configDir) {
         try {
             Worldsure.restorePendingOnServer(gameDir);
         } catch (RuntimeException e) {
             Worldsure.LOG.error("Could not restore the backup asked for", e);
+        }
+        Path world = Worldsure.serverWorldDir(gameDir);
+        String refusal = Worldsure.strictRefusal(world, configDir, Platform.get().installedMods()).orElse(null);
+        if (refusal != null) {
+            Worldsure.LOG.error(refusal);
+            throw new IllegalStateException(refusal);
         }
     }
 
