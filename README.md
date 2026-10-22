@@ -57,13 +57,16 @@ newer Worldsure is never overwritten: the mods listed in a newer passport are st
 world is backed up, but both files stay as they are until that newer version opens the world again.
 `format` and `mods` keep their meaning in every passport format, so this comparison always works.
 
-## Not done yet
+## Limits
 
-Entities of a removed mod are kept but not shown while the mod is missing. Items in player
-inventories are kept but not counted, and chunks last saved before Minecraft 1.18 are counted once
-the game saves them. Items
-stored by other mods in their own files (storage networks, global backpacks) are outside Worldsure's
-reach.
+- Entities of a removed mod are kept but not shown while the mod is missing.
+- Items in player inventories are kept but not counted; chunks last saved before Minecraft 1.18 are
+  counted once the game saves them.
+- Items that other mods keep in files of their own (storage networks, global backpacks) are outside
+  Worldsure's reach. A placeholder item put into such storage stays a placeholder there and turns back
+  into its item when read while Worldsure is installed; with Worldsure removed it is lost.
+- Server-only mode lets players join without Worldsure on Fabric and NeoForge; Forge clients always
+  need the mod.
 
 ## Compatibility
 
@@ -101,8 +104,8 @@ The downloaded jars stay in `build/`, are only used by those runs and are never 
 
 ## Installing
 
-Put the jar for your loader and Minecraft version, e.g. `worldsure-fabric-0.6.0+1.21.1.jar` (with
-Fabric API), `worldsure-neoforge-0.6.0+26.3.jar` or `worldsure-forge-0.6.0+1.20.1.jar`, into `mods/`.
+Put the jar for your loader and Minecraft version, e.g. `worldsure-fabric-1.0.0+1.21.1.jar` (with
+Fabric API), `worldsure-neoforge-1.0.0+26.3.jar` or `worldsure-forge-1.0.0+1.20.1.jar`, into `mods/`.
 Worldsure adds a block and an item, so by default a server and the clients joining it all need it;
 with `serverOnly=true` on a Fabric or NeoForge server, players can join without it.
 
@@ -116,7 +119,7 @@ Gradle runs on JDK 25 (`gradle/gradle-daemon-jvm.properties`); the JDKs 17 and 2
 ```
 
 builds all twelve jars into `versions/<minecraft>/<loader>/build/libs`, named like
-`worldsure-fabric-0.6.0+26.3.jar`. `-Ptargets=26.3,1.21.1` builds only those Minecraft versions;
+`worldsure-fabric-1.0.0+26.3.jar`. `-Ptargets=26.3,1.21.1` builds only those Minecraft versions;
 `./gradlew :common:test -PcommonOnly` runs the core tests without downloading Minecraft.
 `./gradlew :1.21.1:fabric:runClient` (or `runServer`) starts the game with the mod; add
 `-PquickPlay=<world>` to open a single player world right away.

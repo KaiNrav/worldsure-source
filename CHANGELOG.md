@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.0
+
+The first stable version. On all twelve builds (Minecraft 26.3, 26.2, 26.1.x, 1.21.11 and 1.21.1 on
+Fabric and NeoForge, 1.20.1 on Fabric and Forge), removing or downgrading a mod no longer costs the
+world anything:
+
+- its blocks, chests and machines, mobs, items and biomes are kept while it is missing and come back
+  with it, and the files on disk never hold a placeholder, so removing Worldsure itself stays safe;
+- the world is backed up before it loads with the change, and any backup can be restored from the
+  Worldsure screen or with `/worldsure restore`, keeping the world it replaces;
+- the Worldsure screen counts what each mod has in the world, from the first start on.
+
+Servers get server-only mode, strict mode and `/worldsure status`, `backups`, `backup`, `restore` and
+`scan`. The file formats are frozen for 1.x (`docs/formats.md`). Every build is checked by game tests in
+a real game test server and by a real dedicated server, also next to C2ME, Distant Horizons and Create.
+
+Nothing changed in the code since 0.9.0; this version moves Worldsure from beta to release.
+
 ## 0.9.0
 
 - The file formats are frozen for 1.x and written down in `docs/formats.md`: the passport (format 1),

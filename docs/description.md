@@ -3,15 +3,16 @@
 **Insurance for your world when the mod list changes.**
 
 Removing a mod, or loading an older version of one, makes Minecraft quietly delete everything that
-mod added: blocks, chests and machines, mobs. Worldsure notices before that happens and keeps them.
+mod added: blocks, chests and machines, mobs, items, biomes. Worldsure notices before that happens and
+keeps them until the mod is back.
 
 ## What it does
 
 - **Remembers the mods of every world.** Each world gets a small passport listing the mods and
   versions it was last played with.
 - **Asks before opening a changed world.** In single player a clear screen lists every mod that was
-  removed, updated, downgraded or added, with how many blocks, chests or machines and mobs of each
-  are in the world. Choose *Back up & play*, *Play without backup* or *Back*, and open the same
+  removed, updated, downgraded or added, with how many blocks, chests or machines, mobs and items of
+  each are in the world. Choose *Back up & play*, *Play without backup* or *Back*, and open the same
   screen again any time from the pause menu.
 - **Backs up servers automatically.** On a dedicated server the world is zipped to
   `backups/worldsure/` before a single chunk loads. The 5 newest backups per world are kept.
@@ -28,7 +29,7 @@ mod added: blocks, chests and machines, mobs. Worldsure notices before that happ
 - **Counts the whole world.** On the first start Worldsure counts every mod's blocks, machines, mobs
   and items in the background, so the numbers on the screen are right from the start.
 
-Removing Worldsure itself is always safe: its placeholder blocks are never saved into the world.
+Removing Worldsure itself is safe: its placeholders are never saved into the world.
 
 ## Works with
 
@@ -47,6 +48,9 @@ On Fabric, Fabric API is required.
   `serverOnly=true` on a Fabric or NeoForge server so players can join without it.
 - Servers: `/worldsure status`, `backups`, `backup`, `restore` and `scan`; `strict=true` refuses to
   start a server whose mods were removed until the change is accepted.
-- Settings: `config/worldsure.properties` (`autoBackup`, `keepBackups`, `serverOnly`, `strict`).
+- Settings: `config/worldsure.properties` (`autoBackup`, `keepBackups`, `serverOnly`, `strict`), also
+  on the settings screen.
+- Items that other mods keep in their own storage (storage networks, global backpacks) are outside
+  Worldsure's reach.
 
 Source code and issues: https://github.com/KaiNrav/worldsure-source
