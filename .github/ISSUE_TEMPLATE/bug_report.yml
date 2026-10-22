@@ -1,0 +1,60 @@
+name: Bug report
+description: A crash, an error or something Worldsure does wrong, with nothing lost.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: If blocks, mobs or items disappeared, use **Something was lost** instead.
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you saw.
+    validations:
+      required: true
+  - type: input
+    id: worldsure
+    attributes:
+      label: Worldsure version
+      placeholder: "0.1.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: minecraft
+    attributes:
+      label: Minecraft version
+      options: ["26.3", "26.2", "26.1.x", "1.21.11", "1.21 or 1.21.1", "1.20.1"]
+    validations:
+      required: true
+  - type: dropdown
+    id: loader
+    attributes:
+      label: Loader
+      options: [Fabric, NeoForge, Forge]
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options: [Single player, Dedicated server, LAN or server hosted from the game]
+    validations:
+      required: true
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other mods
+      description: The mod list, or the mods that changed, if it may matter.
+  - type: textarea
+    id: passport
+    attributes:
+      label: World passport
+      description: The file `<world>/worldsure/manifest.json`, if the bug is about a world. Its `format` number tells which Worldsure wrote it.
+      render: json
+  - type: textarea
+    id: log
+    attributes:
+      label: Log or crash report
+      description: "`logs/latest.log` or the file from `crash-reports/`; a link to a paste site is fine."
+      render: shell

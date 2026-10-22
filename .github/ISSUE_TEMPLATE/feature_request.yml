@@ -1,0 +1,23 @@
+name: Idea
+description: Something Worldsure could do, or a mod it should work better with.
+title: "[Idea] "
+labels: ["idea"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What goes wrong today
+      description: The situation where Worldsure falls short, e.g. "after removing mod X its item pipes are gone".
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Minecraft version and loader
+      placeholder: 1.21.1 NeoForge

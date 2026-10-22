@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "worldsure-gametest",
+  "version": "1.0.0",
+  "name": "Worldsure game tests",
+  "description": "Game tests of Worldsure; only loaded by the gametest run, never shipped.",
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": ["io.github.kainrav.worldsure.fabric.WorldsureFabricGameTests"]
+  },
+  "depends": {
+    "worldsure": "*",
+    "fabric-gametest-api-v1": "*"
+  }
+}

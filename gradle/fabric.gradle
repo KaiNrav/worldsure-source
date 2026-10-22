@@ -19,3 +19,42 @@ dependencies {
 if (project.hasProperty('quickPlay')) {
     loom.runs.client.programArgs('--quickPlaySingleplayer', project.property('quickPlay') as String)
 }
+
+// Game tests: `gradlew :<minecraft>:fabric:gametest` runs the gametest source set in a headless game
+// test server, without a client, and fails when a test fails.
+def gametestDir = layout.buildDirectory.dir('gametest')
+loom {
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+        "${mod_id}-gametest" {
+            sourceSet sourceSets.gametest
+        }
+    }
+    runs {
+        gametest {
+            server()
+            name = 'Game Test'
+            source sourceSets.gametest
+            runDir = 'build/gametest'
+            ideConfigGenerated = false
+            vmArg '-Dfabric-api.gametest'
+            vmArg "-Dfabric-api.gametest.report-file=${gametestDir.get().file('report.xml').asFile}"
+        }
+    }
+}
+
+tasks.named('runGametest') {
+    // A fresh world every time, so the tests see what a first start writes.
+    doFirst {
+        project.delete(gametestDir)
+        gametestDir.get().asFile.mkdirs()
+    }
+}
+
+tasks.register('gametest') {
+    group = 'verification'
+    description = 'Runs the game tests in a headless server.'
+    dependsOn 'runGametest'
+}

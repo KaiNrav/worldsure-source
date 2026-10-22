@@ -19,11 +19,12 @@ import java.util.zip.GZIPOutputStream;
 /**
  * Per-chunk counts of modded objects, refreshed whenever the game saves a chunk, so the totals
  * describe what is on disk. Vanilla ({@code minecraft}) objects are not counted: they never go missing.
- * Stored as {@code <world>/worldsure/index.dat}.
+ * Stored as {@code <world>/worldsure/index.dat}, which starts with the number of its format.
  */
 public final class CountIndex {
     public static final String FILE_NAME = "index.dat";
-    private static final int FORMAT = 1;
+    /** The format this version writes. A layout change bumps it and teaches {@link #read} the old one. */
+    public static final int FORMAT = 1;
     private static final String VANILLA = "minecraft";
 
     /** dimension -> chunk key -> namespace -> counts */
@@ -106,6 +107,11 @@ public final class CountIndex {
         return dirty;
     }
 
+    /**
+     * Reads the counts of a world, empty if it has none yet.
+     *
+     * @throws NewerFormatException if a newer Worldsure wrote the counts
+     */
     public static CountIndex read(Path worldDir) throws IOException {
         CountIndex index = new CountIndex();
         Path file = path(worldDir);
@@ -114,7 +120,10 @@ public final class CountIndex {
         }
         try (DataInputStream in = new DataInputStream(new BufferedInputStream(new GZIPInputStream(Files.newInputStream(file))))) {
             int format = in.readInt();
-            if (format != FORMAT) {
+            if (format > FORMAT) {
+                throw new NewerFormatException(file, format, FORMAT);
+            }
+            if (format < 1) {
                 throw new IOException("Unknown count index format " + format);
             }
             int dimensionCount = in.readInt();

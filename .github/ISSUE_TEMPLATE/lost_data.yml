@@ -1,0 +1,83 @@
+name: Something was lost
+description: Blocks, chests, machines, mobs or items disappeared after the mod list changed.
+title: "[Lost] "
+labels: ["lost data"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Sorry about that. Before anything else: **do not play the world further** and keep the backups in
+        `backups/worldsure/`. The newest one was made before the world loaded with the changed mods.
+  - type: dropdown
+    id: lost
+    attributes:
+      label: What was lost
+      multiple: true
+      options:
+        - Blocks of a removed mod
+        - Contents of chests or machines
+        - Mobs or other entities
+        - Items (in chests, inventories, item frames or on the ground)
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: What changed in the mod list
+      description: Which mods were removed, updated or downgraded, from which version to which.
+      placeholder: Removed create 6.0.4; updated jei 19.1 to 19.2
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you saw. Did the Worldsure screen show up? Was a backup made?
+    validations:
+      required: true
+  - type: input
+    id: worldsure
+    attributes:
+      label: Worldsure version
+      placeholder: "0.1.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: minecraft
+    attributes:
+      label: Minecraft version
+      options: ["26.3", "26.2", "26.1.x", "1.21.11", "1.21 or 1.21.1", "1.20.1"]
+    validations:
+      required: true
+  - type: dropdown
+    id: loader
+    attributes:
+      label: Loader
+      options: [Fabric, NeoForge, Forge]
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options: [Single player, Dedicated server, LAN or server hosted from the game]
+    validations:
+      required: true
+  - type: textarea
+    id: passport
+    attributes:
+      label: World passport
+      description: |
+        The file `<world>/worldsure/manifest.json` from the backup made before the loss (open the zip in
+        `backups/worldsure/`), or from the world if there is no backup. Its `format` number tells which
+        Worldsure wrote it.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: "`logs/latest.log` of the start where things went missing. Lines with `Worldsure` matter most; a link to a paste site is fine."
+      render: shell

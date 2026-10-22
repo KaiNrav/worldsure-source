@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.1
+
+- The world passport and the object counts now check the format number they are stored with, so
+  later versions can upgrade them. Older passports without a number are read as format 1.
+- A world last played with a newer Worldsure keeps its passport and counts exactly as they are, so
+  going back to that version loses nothing. Its mod list is still compared and the world is backed
+  up before it loads.
+- Issue templates for bugs, lost blocks, mobs or items, and ideas.
+- Game tests on every Minecraft version and loader check the passport, the placeholder block and
+  the round trip of a removed mod's blocks inside a real game test server.
+
 ## 0.1.0
 
 First public version, for Minecraft 26.3, 26.2, 26.1.x, 1.21.11 and 1.21.1 on Fabric and NeoForge,

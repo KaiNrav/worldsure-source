@@ -25,3 +25,37 @@ neoForge {
         }
     }
 }
+
+// Game tests: `gradlew :<minecraft>:neoforge:gametest` runs the gametest source set in NeoForge's game
+// test server, without a client, and fails when a test fails.
+def gametestDir = layout.buildDirectory.dir('gametest')
+neoForge {
+    addModdingDependenciesTo(sourceSets.gametest)
+    runs {
+        gameTestServer {
+            type = 'gameTestServer'
+            sourceSet = sourceSets.gametest
+            gameDirectory = gametestDir.get().asFile
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        }
+    }
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.gametest
+        }
+    }
+}
+
+tasks.named('runGameTestServer') {
+    // A fresh world every time, so the tests see what a first start writes.
+    doFirst {
+        project.delete(gametestDir)
+        gametestDir.get().asFile.mkdirs()
+    }
+}
+
+tasks.register('gametest') {
+    group = 'verification'
+    description = 'Runs the game tests in a headless server.'
+    dependsOn 'runGameTestServer'
+}

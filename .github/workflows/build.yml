@@ -33,9 +33,16 @@ jobs:
           for jar in $jars; do
             unzip -l "$jar" | grep -q assets/worldsure/icon.png
             unzip -l "$jar" | grep -q LICENSE_worldsure
+            # Game tests are a separate source set and must stay out of the jars.
+            # (`! cmd` never stops a `set -e` script, so failures exit explicitly.)
+            if unzip -l "$jar" | grep -qiE 'gametest|structures?/empty\.nbt'; then
+              echo "$jar contains game tests" >&2
+              exit 1
+            fi
             for meta in fabric.mod.json META-INF/neoforge.mods.toml META-INF/mods.toml worldsure.mixins.json; do
-              if unzip -l "$jar" | grep -q " $meta$"; then
-                ! unzip -p "$jar" "$meta" | grep -F '${'
+              if unzip -l "$jar" | grep -q " $meta$" && unzip -p "$jar" "$meta" | grep -F '${'; then
+                echo "$jar has an unexpanded placeholder in $meta" >&2
+                exit 1
               fi
             done
           done
@@ -45,7 +52,8 @@ jobs:
           path: versions/*/*/build/libs/*.jar
 
   smoke:
-    # Runs a real dedicated server per target: passport, backup and placeholder round trip.
+    # Per target: the game tests in a game test server, then a real dedicated server for the
+    # passport, backup and placeholder round trip.
     needs: build
     runs-on: ubuntu-latest
     strategy:
@@ -74,6 +82,11 @@ jobs:
             21
             25
       - uses: gradle/actions/setup-gradle@v4
+      - name: Game tests
+        timeout-minutes: 30
+        run: |
+          target='${{ matrix.target }}'
+          ./gradlew ":${target%%:*}:${target##*:}:gametest" "-Ptargets=${target%%:*}" --console=plain
       - name: Server smoke test
         timeout-minutes: 30
         run: python3 .github/smoke/smoke.py ${{ matrix.target }}
@@ -85,4 +98,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.LOGS }}
-          path: versions/*/*/run/logs/
+          path: |
+            versions/*/*/run/logs/
+            versions/*/*/build/gametest/logs/
+            versions/*/*/build/gametest/report.xml

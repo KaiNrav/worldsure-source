@@ -7,34 +7,51 @@ def minecraft = minecraft_version as String
 def javaVersion = java_version as int
 def loader = project.name
 def sourceDirs = ['common', 'shared', loader].collect { rootProject.file("${it}/src/main/java") }
-def preprocessed = layout.buildDirectory.dir('preprocessed/java')
+// Game tests (see gradle/<loader>.gradle) live in src/gametest of shared/ and the loader; they never go into the jar.
+def gametestDirs = ['shared', loader].collect { rootProject.file("${it}/src/gametest/java") }
 
-def preprocessJava = tasks.register('preprocessJava') {
-    description = "Writes the sources as they compile for Minecraft ${minecraft}."
-    inputs.files(sourceDirs).withPropertyName('sources')
-    inputs.property('minecraft', minecraft)
-    outputs.dir(preprocessed)
-    doLast {
-        def out = preprocessed.get().asFile
-        out.deleteDir()
-        sourceDirs.findAll { it.isDirectory() }.each { dir ->
-            dir.eachFileRecurse(FileType.FILES) { file ->
-                def target = new File(out, dir.toPath().relativize(file.toPath()).toString())
-                target.parentFile.mkdirs()
-                if (file.name.endsWith('.java')) {
-                    def text = file.getText('UTF-8').replace('\r\n', '\n')
-                    target.setText(rootProject.ext.preprocess(text, minecraft, file.path), 'UTF-8')
-                } else {
-                    target.bytes = file.bytes
+/** Registers a task that writes the sources in {@code dirs} as they compile for this Minecraft version. */
+def preprocessTask = { String name, List<File> dirs, String outDir ->
+    def out = layout.buildDirectory.dir(outDir)
+    tasks.register(name) {
+        description = "Writes the ${outDir} sources as they compile for Minecraft ${minecraft}."
+        inputs.files(dirs).withPropertyName('sources')
+        inputs.property('minecraft', minecraft)
+        outputs.dir(out)
+        doLast {
+            def target = out.get().asFile
+            target.deleteDir()
+            dirs.findAll { it.isDirectory() }.each { dir ->
+                dir.eachFileRecurse(FileType.FILES) { file ->
+                    def copy = new File(target, dir.toPath().relativize(file.toPath()).toString())
+                    copy.parentFile.mkdirs()
+                    if (file.name.endsWith('.java')) {
+                        def text = file.getText('UTF-8').replace('\r\n', '\n')
+                        copy.setText(rootProject.ext.preprocess(text, minecraft, file.path), 'UTF-8')
+                    } else {
+                        copy.bytes = file.bytes
+                    }
                 }
             }
         }
     }
 }
+def preprocessJava = preprocessTask('preprocessJava', sourceDirs, 'preprocessed/java')
+def preprocessGametestJava = preprocessTask('preprocessGametestJava', gametestDirs, 'preprocessed/gametest')
 
 sourceSets.main.java.setSrcDirs([])
 sourceSets.main.java.srcDir(preprocessJava)
 sourceSets.main.resources.setSrcDirs(['common', 'shared', loader].collect { rootProject.file("${it}/src/main/resources") })
+
+sourceSets {
+    gametest {
+        java.setSrcDirs([])
+        java.srcDir(preprocessGametestJava)
+        resources.setSrcDirs(['shared', loader].collect { rootProject.file("${it}/src/gametest/resources") })
+        compileClasspath += main.output + main.compileClasspath
+        runtimeClasspath += main.output + main.runtimeClasspath
+    }
+}
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(javaVersion)
 tasks.withType(JavaCompile).configureEach {

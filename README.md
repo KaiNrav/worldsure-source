@@ -24,6 +24,14 @@ Worldsure itself is always safe.
 
 Settings live in `config/worldsure.properties` (`autoBackup`, `keepBackups`).
 
+## Files and formats
+
+`manifest.json` has a `"format"` number and `index.dat` starts with one. A file in an older format
+is upgraded when it is read (`Upgrades` in `common/`, one step per format). A file written by a
+newer Worldsure is never overwritten: the mods listed in a newer passport are still compared and the
+world is backed up, but both files stay as they are until that newer version opens the world again.
+`format` and `mods` keep their meaning in every passport format, so this comparison always works.
+
 ## Not done yet
 
 Placeholders for entities and items of removed mods (those are still dropped by the game) and
@@ -42,8 +50,8 @@ item counts. Counts cover chunks saved while Worldsure was installed.
 
 ## Installing
 
-Put the jar for your loader and Minecraft version, e.g. `worldsure-fabric-0.1.0+1.21.1.jar` (with
-Fabric API), `worldsure-neoforge-0.1.0+26.3.jar` or `worldsure-forge-0.1.0+1.20.1.jar`, into `mods/`. Worldsure adds a block, so a server and the clients joining it all need it.
+Put the jar for your loader and Minecraft version, e.g. `worldsure-fabric-0.1.1+1.21.1.jar` (with
+Fabric API), `worldsure-neoforge-0.1.1+26.3.jar` or `worldsure-forge-0.1.1+1.20.1.jar`, into `mods/`. Worldsure adds a block, so a server and the clients joining it all need it.
 
 ## Building
 
@@ -55,7 +63,7 @@ Gradle runs on JDK 25 (`gradle/gradle-daemon-jvm.properties`); the JDKs 17 and 2
 ```
 
 builds all twelve jars into `versions/<minecraft>/<loader>/build/libs`, named like
-`worldsure-fabric-0.1.0+26.3.jar`. `-Ptargets=26.3,1.21.1` builds only those Minecraft versions;
+`worldsure-fabric-0.1.1+26.3.jar`. `-Ptargets=26.3,1.21.1` builds only those Minecraft versions;
 `./gradlew :common:test -PcommonOnly` runs the core tests without downloading Minecraft.
 `./gradlew :1.21.1:fabric:runClient` (or `runServer`) starts the game with the mod; add
 `-PquickPlay=<world>` to open a single player world right away.
@@ -87,7 +95,16 @@ so an IDE reads the files as plain Java for 26.3. Conditions compare the Minecra
 
 ## Tests
 
-CI builds every jar and then, for each target, runs a real dedicated server twice
+`./gradlew :common:test -PcommonOnly` runs the unit tests of the core.
+
+Game tests run inside a real game test server, with no client: `./gradlew :26.3:fabric:gametest
+-Ptargets=26.3` (any target works the same way). They check the passport the server writes, the
+placeholder block and the round trip of a removed mod's blocks with the game's own registries. The
+checks are in `shared/src/gametest`; each loader registers them from `<loader>/src/gametest`. They are
+a separate source set, so they never go into the jars. The run starts from a fresh world in
+`versions/<minecraft>/<loader>/build/gametest`.
+
+CI builds every jar and then, for each target, runs the game tests and a real dedicated server twice
 (`.github/smoke/smoke.py`): the second run opens the world with a fake mod's blocks
 written into a chunk and checks the backup, the report, that the blocks survive a save
 and that the passport counts them.

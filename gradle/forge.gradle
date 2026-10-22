@@ -38,3 +38,37 @@ dependencies {
 jar {
     manifest.attributes('MixinConfigs': "${mod_id}.mixins.json")
 }
+
+// Game tests: `gradlew :1.20.1:forge:gametest` runs the gametest source set in Forge's game test
+// server, without a client, and fails when a test fails.
+def gametestDir = layout.buildDirectory.dir('gametest')
+legacyForge {
+    addModdingDependenciesTo(sourceSets.gametest)
+    runs {
+        gameTestServer {
+            type = 'gameTestServer'
+            sourceSet = sourceSets.gametest
+            gameDirectory = gametestDir.get().asFile
+            systemProperty 'forge.enabledGameTestNamespaces', mod_id
+        }
+    }
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.gametest
+        }
+    }
+}
+
+tasks.named('runGameTestServer') {
+    // A fresh world every time, so the tests see what a first start writes.
+    doFirst {
+        project.delete(gametestDir)
+        gametestDir.get().asFile.mkdirs()
+    }
+}
+
+tasks.register('gametest') {
+    group = 'verification'
+    description = 'Runs the game tests in a headless server.'
+    dependsOn 'runGameTestServer'
+}

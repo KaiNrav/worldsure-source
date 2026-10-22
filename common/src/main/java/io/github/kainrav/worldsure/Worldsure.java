@@ -22,6 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>{@link #takeJoinReport} when a player joins a single player world, to show them the report;</li>
  *   <li>{@link #onWorldClosed} after the world's final save, which stores the object counts.</li>
  * </ol>
+ * A passport or count index written by a newer Worldsure is never written over, so going back to
+ * that version loses nothing.
  */
 public final class Worldsure {
     public static final String MOD_ID = "worldsure";
@@ -31,6 +33,8 @@ public final class Worldsure {
     /** Choices made on the confirmation screen, by world folder, consumed when that world's server starts. */
     private static final Map<Path, Report.BackupResult> decisions = new ConcurrentHashMap<>();
     private static volatile CountIndex counts = new CountIndex();
+    /** Whether the open world's count index is from a newer Worldsure and must stay as it is. */
+    private static volatile boolean keepCountIndex;
     private static WorldReview currentReview;
 
     private Worldsure() {
@@ -46,9 +50,17 @@ public final class Worldsure {
         WorldManifest saved;
         try {
             saved = WorldManifest.read(worldDir).orElse(null);
+        } catch (NewerFormatException e) {
+            LOG.warn("World {} was last played with a newer Worldsure (passport format {}, this one reads up to {}); "
+                    + "skipping the check and leaving the passport as it is", worldName, e.found(), e.known());
+            return Optional.empty();
         } catch (IOException e) {
             LOG.error("Could not read the passport of world {}; skipping the check", worldName, e);
             return Optional.empty();
+        }
+        if (saved != null && saved.isNewer()) {
+            LOG.warn("World {} was last played with a newer Worldsure (passport format {}, this one reads up to {}); "
+                    + "its passport is left as it is", worldName, saved.format(), WorldManifest.FORMAT);
         }
         if (saved == null) {
             LOG.info("World {} has no passport yet; it will be created once the world loads", worldName);
@@ -145,6 +157,9 @@ public final class Worldsure {
         WorldManifest saved;
         try {
             saved = WorldManifest.read(worldDir).orElse(null);
+        } catch (NewerFormatException e) {
+            // check() explains this in the log when the world starts.
+            return Optional.empty();
         } catch (IOException e) {
             LOG.error("Could not read the passport of world {}", worldDir.getFileName(), e);
             return Optional.empty();
@@ -182,8 +197,14 @@ public final class Worldsure {
     }
 
     private static void loadCounts(Path worldDir) {
+        keepCountIndex = false;
         try {
             counts = CountIndex.read(worldDir);
+        } catch (NewerFormatException e) {
+            LOG.warn("The object counts of world {} were saved by a newer Worldsure (format {}, this one reads up to {}); "
+                    + "they are left as they are and this session's counts are not saved", worldDir.getFileName(), e.found(), e.known());
+            counts = new CountIndex();
+            keepCountIndex = true;
         } catch (IOException e) {
             LOG.error("Could not read the object counts of world {}; counting starts over", worldDir.getFileName(), e);
             counts = new CountIndex();
@@ -201,11 +222,25 @@ public final class Worldsure {
     }
 
     private static void writePassport(Path worldDir, String loader, List<ModInfo> installed) {
+        if (hasNewerPassport(worldDir)) {
+            return;
+        }
         String now = OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS).toString();
         try {
             new WorldManifest(loader, now, installed, counts.totals()).write(worldDir);
         } catch (IOException e) {
             LOG.error("Could not write the passport of world {}", worldDir.getFileName(), e);
+        }
+    }
+
+    private static boolean hasNewerPassport(Path worldDir) {
+        try {
+            return WorldManifest.read(worldDir).map(WorldManifest::isNewer).orElse(false);
+        } catch (NewerFormatException e) {
+            return true;
+        } catch (IOException e) {
+            // A damaged passport is replaced by a fresh one.
+            return false;
         }
     }
 
@@ -221,7 +256,9 @@ public final class Worldsure {
         pendingReport = List.of();
         currentReview = null;
         try {
-            counts.write(worldDir);
+            if (!keepCountIndex) {
+                counts.write(worldDir);
+            }
         } catch (IOException e) {
             LOG.error("Could not write the object counts of world {}", worldDir.getFileName(), e);
         }
