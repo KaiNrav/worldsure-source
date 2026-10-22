@@ -87,6 +87,8 @@ public final class WorldsureScreen extends Screen {
                 () -> showAll, () -> select(true));
         addRenderableWidget(changesTab);
         addRenderableWidget(allTab);
+        addRenderableWidget(new FlatButton(right - 20, top - 3, 20, 16, Component.literal("⚙"), FlatButton.Style.SECONDARY,
+                () -> WorldsureClient.setScreen(new SettingsScreen(this))));
 
         int buttonsY = bottom - BUTTON_HEIGHT;
         int listTop = tabsY + 20;
@@ -232,7 +234,8 @@ public final class WorldsureScreen extends Screen {
         graphics.text(font, title, left + 11, top, Theme.ACCENT);
         int nameX = left + 11 + font.width(title) + 6;
         graphics.text(font, "·", nameX - 4, top, Theme.DIM);
-        String name = font.plainSubstrByWidth(review.worldName(), right - nameX - 2);
+        // The settings button sits at the right end of the first two lines.
+        String name = font.plainSubstrByWidth(review.worldName(), right - nameX - 26);
         graphics.text(font, name, nameX + 2, top, Theme.TEXT);
 
         Component subtitle;
@@ -244,7 +247,7 @@ public final class WorldsureScreen extends Screen {
             subtitle = Component.translatable(beforeLoad() ? "worldsure.screen.changed.before" : "worldsure.screen.changed.after",
                     savedAt());
         }
-        String text = font.plainSubstrByWidth(subtitle.getString(), right - left);
+        String text = font.plainSubstrByWidth(subtitle.getString(), right - left - 24);
         graphics.text(font, text, left, top + 12, Theme.MUTED);
     }
 

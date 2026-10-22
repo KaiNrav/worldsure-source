@@ -33,6 +33,9 @@ RUN = os.path.join(ROOT, "versions", MINECRAFT, LOADER, "run")
 GRADLE = os.path.join(ROOT, "gradlew.bat" if os.name == "nt" else "gradlew")
 WORLD = os.path.join(RUN, "world")
 RCON_PORT = 25575
+# Folder of extra mods (see .github/compat/fetch.py) to run the server with; empty for none.
+COMPAT_MODS = os.environ.get("WORLDSURE_COMPAT_MODS", "")
+GRADLE_ARGS = [f"-Ptargets={MINECRAFT}", "--console=plain"] + ([f"-PcompatMods={COMPAT_MODS}"] if COMPAT_MODS else [])
 PASSWORD = "smoke"
 
 
@@ -41,6 +44,12 @@ def log(msg):
 
 
 def prepare():
+    # Start clean: an earlier run may have left a world, backups or strict mode behind.
+    import shutil
+    for leftover in [WORLD, os.path.join(RUN, "backups")] + glob.glob(os.path.join(RUN, "world_before_restore_*")):
+        shutil.rmtree(leftover, ignore_errors=True)
+    if os.path.exists(os.path.join(RUN, "config", "worldsure.properties")):
+        os.remove(os.path.join(RUN, "config", "worldsure.properties"))
     os.makedirs(RUN, exist_ok=True)
     with open(os.path.join(RUN, "eula.txt"), "w") as f:
         f.write("eula=true\n")
@@ -75,7 +84,7 @@ def run_server(*commands, finish=("save-all flush", "stop"), wait_for=None):
     With finish=() the commands themselves must stop the server. With wait_for, the server is only
     stopped once a line matching that pattern was printed (or after 3 minutes)."""
     task = f":{TARGET}:runServer"
-    proc = subprocess.Popen([GRADLE, task, f"-Ptargets={MINECRAFT}", "--console=plain"], cwd=ROOT, stdout=subprocess.PIPE,
+    proc = subprocess.Popen([GRADLE, task, *GRADLE_ARGS], cwd=ROOT, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True)
     lines = []
     ready = threading.Event()
@@ -106,7 +115,7 @@ def run_server(*commands, finish=("save-all flush", "stop"), wait_for=None):
 
 def start_expecting_failure():
     """Starts the server, which is expected to stop on its own before it is up; returns its output."""
-    proc = subprocess.Popen([GRADLE, f":{TARGET}:runServer", f"-Ptargets={MINECRAFT}", "--console=plain"], cwd=ROOT,
+    proc = subprocess.Popen([GRADLE, f":{TARGET}:runServer", *GRADLE_ARGS], cwd=ROOT,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True)
     try:
         output, _ = proc.communicate(timeout=900)

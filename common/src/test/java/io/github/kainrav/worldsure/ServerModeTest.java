@@ -47,6 +47,15 @@ class ServerModeTest {
     }
 
     @Test
+    void savedSettingsReadBack() throws IOException {
+        WorldsureConfig changed = new WorldsureConfig(false, 20, true, true);
+        changed.save(config());
+        assertEquals(changed, WorldsureConfig.load(config()));
+        String text = Files.readString(config().resolve(WorldsureConfig.FILE_NAME));
+        assertTrue(text.contains("# Servers: true keeps blocks and items"), "explanations are kept: " + text);
+    }
+
+    @Test
     void readsServerSettings() throws IOException {
         Files.createDirectories(config());
         Files.writeString(config().resolve(WorldsureConfig.FILE_NAME), "serverOnly=true\nstrict=TRUE\n");

@@ -9,7 +9,8 @@
     "ChunkDataMixin"
   ],
   "client": [
-    "client.WorldOpenFlowsMixin"
+    "client.WorldOpenFlowsMixin",
+    "client.LevelSummaryMixin"
   ],
   "injectors": {
     "defaultRequire": 1

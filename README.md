@@ -63,6 +63,29 @@ the game saves them. Items
 stored by other mods in their own files (storage networks, global backpacks) are outside Worldsure's
 reach.
 
+## Compatibility
+
+Checked by running Worldsure next to these mods; the Compatibility workflow
+(`.github/workflows/compat.yml`) repeats it weekly on more targets.
+
+| Mod | Checked on | Result |
+|---|---|---|
+| C2ME | game tests on Fabric 26.3, 1.21.11, 1.20.1 and NeoForge 1.21.1; servers on Fabric 26.3, 1.20.1 and NeoForge 1.21.1 | Every Worldsure game test passes; on the servers, blocks, mobs, items and biomes of a removed mod are kept, backups restore and strict mode works |
+| Distant Horizons | servers on Fabric 26.3, 1.20.1 and NeoForge 1.21.1 | The same on a real server; it does not start in a game test server, so it is only in the server test |
+| Create | NeoForge 1.21.1, Fabric 1.20.1 | The same; two of Create's own game tests fail in that run, which are not Worldsure's |
+
+On the NeoForge 26.3 beta, C2ME 0.4.2-alpha fails while the game boots, before Worldsure runs any of
+its code (an error inside the MixinExtras that C2ME bundles).
+
+Run it locally for one target with
+
+```
+python3 .github/compat/fetch.py 1.21.1:neoforge build/compat/1.21.1-neoforge
+./gradlew :1.21.1:neoforge:gametest -Ptargets=1.21.1 -PcompatMods=build/compat/1.21.1-neoforge
+```
+
+The downloaded jars stay in `build/`, are only used by those runs and are never shipped.
+
 ## Supported versions
 
 | Minecraft | Loaders |

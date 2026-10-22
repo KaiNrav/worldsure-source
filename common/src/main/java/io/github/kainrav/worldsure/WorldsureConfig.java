@@ -94,6 +94,11 @@ public record WorldsureConfig(boolean autoBackup, int keepBackups, boolean serve
         }
     }
 
+    /** Writes these settings to config/worldsure.properties, with every explanation. */
+    public void save(Path configDir) throws IOException {
+        write(configDir.resolve(FILE_NAME));
+    }
+
     private void write(Path file) throws IOException {
         Files.createDirectories(file.getParent());
         try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {

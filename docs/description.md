@@ -30,6 +30,12 @@ mod added: blocks, chests and machines, mobs. Worldsure notices before that happ
 
 Removing Worldsure itself is always safe: its placeholder blocks are never saved into the world.
 
+## Works with
+
+Checked next to C2ME, Distant Horizons and Create. The world list marks worlds whose mods changed,
+there is a settings screen, and the mod speaks English, Russian, German, Spanish, French, Brazilian
+Portuguese, Ukrainian, Polish, Simplified Chinese and Japanese.
+
 ## Versions
 
 Minecraft 26.3, 26.2, 26.1.x, 1.21.11 and 1.21.1 on Fabric and NeoForge; 1.20.1 on Fabric and Forge.

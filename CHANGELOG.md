@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.0
+
+- The world list marks worlds whose mods changed since they were last played: their info line
+  gets "⛨ Mods changed: N".
+- A settings screen, opened with the ⚙ button on the Worldsure screen and, on NeoForge and Forge,
+  with Config in the mod list: automatic backups, how many to keep, server-only placeholders and
+  strict mode, saved at once.
+- Translations: German, Spanish, French, Brazilian Portuguese, Ukrainian, Polish, Simplified
+  Chinese and Japanese, next to English and Russian.
+- Checked next to C2ME, Distant Horizons and Create (see Compatibility in the README): a real
+  server with them keeps a removed mod's blocks, mobs, items and biomes, restores backups and
+  honours strict mode; Worldsure's game tests pass with C2ME and Create loaded.
+
 ## 0.6.0
 
 - **Server-only mode** (`serverOnly=true` in `config/worldsure.properties`): Worldsure registers no

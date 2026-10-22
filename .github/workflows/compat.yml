@@ -1,0 +1,65 @@
+name: Compatibility
+
+# Runs Worldsure next to mods that change how chunks are stored or read: C2ME, Distant Horizons and
+# Create, fetched from Modrinth for each target (.github/compat/fetch.py). The game tests run with C2ME
+# and Create (Distant Horizons does not start in a game test server); the server smoke test runs with all
+# of them. Informational: it does not gate releases, since those mods change on their own schedule.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  compat:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - 26.3:fabric
+          - 26.2:fabric
+          - 26.2:neoforge
+          - 1.21.11:fabric
+          - 1.21.11:neoforge
+          - 1.21.1:fabric
+          - 1.21.1:neoforge
+          - 1.20.1:fabric
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+            25
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Fetch the mods
+        run: |
+          target='${{ matrix.target }}'
+          python3 .github/compat/fetch.py "$target" build/compat/all
+          mkdir -p build/compat/gametest
+          find build/compat/all -name '*.jar' ! -name 'DistantHorizons*' -exec cp {} build/compat/gametest/ \;
+      - name: Game tests with C2ME and Create
+        timeout-minutes: 30
+        run: |
+          target='${{ matrix.target }}'
+          ./gradlew ":${target%%:*}:${target##*:}:gametest" "-Ptargets=${target%%:*}" -PcompatMods=build/compat/gametest --console=plain | tee gametest.log || true
+          if grep -qE 'All [0-9]+ required tests passed' gametest.log; then exit 0; fi
+          if ! grep -qE 'required tests? failed' gametest.log; then
+            echo "::error::The game test server did not finish"
+            exit 1
+          fi
+          # Create brings game tests of its own; only a failed Worldsure test fails this step.
+          if grep -A60 -E 'required tests? failed' gametest.log | grep -E '   - ' | grep -qi worldsure; then
+            echo "::error::A Worldsure game test failed next to the compat mods"
+            exit 1
+          fi
+          echo "::warning::Only the other mods' own game tests failed"
+          grep -A60 -E 'required tests? failed' gametest.log | grep -E '   - ' || true
+      - name: Server smoke test with all of them
+        timeout-minutes: 40
+        env:
+          WORLDSURE_COMPAT_MODS: build/compat/all
+        run: python3 .github/smoke/smoke.py ${{ matrix.target }}

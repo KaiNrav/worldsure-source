@@ -51,6 +51,20 @@ public final class WorldsureClient {
         return true;
     }
 
+    /** How many mods changed since a world in the saves folder was last played; 0 when none or unknown. */
+    public static int changesOf(String levelId) {
+        try {
+            Path dir = Minecraft.getInstance().getLevelSource().getBaseDir().resolve(levelId);
+            Platform platform = Platform.get();
+            return Worldsure.review(dir, platform.configDir(), platform.installedMods())
+                    .filter(WorldReview::hasChanges)
+                    .map(review -> review.changes().size())
+                    .orElse(0);
+        } catch (RuntimeException e) {
+            return 0;
+        }
+    }
+
     /** What the buttons of the screen before loading do. */
     record Choices(Path worldDir, Runnable open, Runnable cancel) {
         void backUpAndPlay(String worldName) {

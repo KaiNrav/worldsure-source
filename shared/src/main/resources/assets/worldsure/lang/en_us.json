@@ -55,5 +55,16 @@
   "worldsure.restore.question.now": "Put the world back as it was on %s? The world as it is now is kept as a separate world.",
   "worldsure.restore.question.later": "Put the world back as it was on %s? This happens when you leave the world and open it again; the world as it is now is kept as a separate world.",
   "worldsure.restore.later": "Leave the world and open it again to restore the backup.",
-  "worldsure.restore.failed": "The backup was not restored: %s"
+  "worldsure.restore.failed": "The backup was not restored: %s",
+  "worldsure.world_list.changes": "⛨ Mods changed: %s",
+  "worldsure.button.settings": "Settings",
+  "worldsure.settings.title": "Worldsure settings",
+  "worldsure.settings.on": "On",
+  "worldsure.settings.off": "Off",
+  "worldsure.settings.auto_backup": "Back up before a changed world opens: %s",
+  "worldsure.settings.keep_backups": "Backups kept per world: %s",
+  "worldsure.settings.server_only": "Server-only placeholders: %s",
+  "worldsure.settings.server_only.hint": "Bedrock and barriers instead of Worldsure's block and item, so players can join without it. Applies after a restart.",
+  "worldsure.settings.strict": "Strict mode: %s",
+  "worldsure.settings.strict.hint": "A dedicated server refuses to start when a mod was removed or downgraded."
 }

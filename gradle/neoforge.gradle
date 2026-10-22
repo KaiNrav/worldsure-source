@@ -51,6 +51,13 @@ tasks.named('runGameTestServer') {
     doFirst {
         project.delete(gametestDir)
         gametestDir.get().asFile.mkdirs()
+        syncCompatMods(gametestDir.get().dir('mods').asFile)
+    }
+}
+
+tasks.named('runServer') {
+    doFirst {
+        syncCompatMods(project.file('run/mods'))
     }
 }
 

@@ -92,3 +92,23 @@ processResources {
         expand props
     }
 }
+
+// Compatibility runs: `-PcompatMods=<folder>` (see .github/compat/fetch.py) puts the jars of that folder into
+// the mods folder of the game test and server runs. Jars put there by an earlier compatibility run are
+// taken out again by the next run without it.
+ext.syncCompatMods = { File modsDir ->
+    File marker = new File(modsDir, '.worldsure-compat')
+    if (marker.isFile()) {
+        marker.readLines().findAll { it }.each { new File(modsDir, it).delete() }
+        marker.delete()
+    }
+    def folder = project.findProperty('compatMods')
+    if (folder) {
+        File source = rootProject.file(folder)
+        def jars = source.listFiles()?.findAll { it.name.endsWith('.jar') } ?: []
+        modsDir.mkdirs()
+        jars.each { jar -> new File(modsDir, jar.name).bytes = jar.bytes }
+        marker.text = jars.collect { it.name }.join('\n')
+        logger.lifecycle("Compatibility run with ${jars*.name}")
+    }
+}

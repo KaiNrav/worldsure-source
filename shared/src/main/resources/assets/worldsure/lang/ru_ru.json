@@ -55,5 +55,16 @@
   "worldsure.restore.question.now": "Вернуть мир к состоянию на %s? Текущий мир сохранится как отдельный мир.",
   "worldsure.restore.question.later": "Вернуть мир к состоянию на %s? Это произойдёт, когда вы выйдете из мира и откроете его снова; текущий мир сохранится как отдельный мир.",
   "worldsure.restore.later": "Выйдите из мира и откройте его снова, чтобы восстановить бэкап.",
-  "worldsure.restore.failed": "Бэкап не восстановлен: %s"
+  "worldsure.restore.failed": "Бэкап не восстановлен: %s",
+  "worldsure.world_list.changes": "⛨ Моды изменились: %s",
+  "worldsure.button.settings": "Настройки",
+  "worldsure.settings.title": "Настройки Worldsure",
+  "worldsure.settings.on": "Вкл",
+  "worldsure.settings.off": "Выкл",
+  "worldsure.settings.auto_backup": "Бэкап перед открытием изменённого мира: %s",
+  "worldsure.settings.keep_backups": "Бэкапов на мир: %s",
+  "worldsure.settings.server_only": "Заглушки только на сервере: %s",
+  "worldsure.settings.server_only.hint": "Бедрок и барьеры вместо блока и предмета Worldsure, чтобы игроки заходили без мода. Действует после перезапуска.",
+  "worldsure.settings.strict": "Строгий режим: %s",
+  "worldsure.settings.strict.hint": "Выделенный сервер не запускается, если мод удалён или откатан на старую версию."
 }

@@ -12,6 +12,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
@@ -29,7 +30,7 @@ import java.util.List;
 
 @Mod(Worldsure.MOD_ID)
 public final class WorldsureNeoForge implements Platform {
-    public WorldsureNeoForge(IEventBus modBus) {
+    public WorldsureNeoForge(IEventBus modBus, ModContainer container) {
         Platform.set(this);
         WorldsureMc.init(configDir());
         if (!Placeholders.serverOnly()) {
@@ -53,7 +54,7 @@ public final class WorldsureNeoForge implements Platform {
         //#else
         //$ if (FMLEnvironment.dist == Dist.CLIENT) {
         //#endif
-            WorldsureNeoForgeClient.init();
+            WorldsureNeoForgeClient.init(container);
         } else {
             WorldsureMc.onDedicatedServerInit(gameDir(), configDir());
         }
