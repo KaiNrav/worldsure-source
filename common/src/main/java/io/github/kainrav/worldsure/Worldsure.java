@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -91,6 +92,65 @@ public final class Worldsure {
             LOG.error("World backup failed", e);
             return Report.BackupResult.failed(e.getMessage());
         }
+    }
+
+    /**
+     * Restores the backup asked for with {@link WorldBackup#requestRestore}, if it is for this world.
+     * Must run before anything reads the world's files.
+     *
+     * @return what happened, for the player or the log; empty when nothing was asked for this world
+     */
+    public static Optional<String> restorePending(Path worldDir, Path gameDir) {
+        String worldName = worldDir.getFileName().toString();
+        WorldBackup.PendingRestore pending;
+        try {
+            pending = WorldBackup.pendingRestore(gameDir).orElse(null);
+        } catch (IOException e) {
+            LOG.error("Could not read the restore asked for", e);
+            return Optional.empty();
+        }
+        if (pending == null || !pending.world().equals(worldName)) {
+            return Optional.empty();
+        }
+        String result;
+        Path backup = WorldBackup.backupsDir(gameDir).resolve(pending.backup());
+        try {
+            if (!Files.isRegularFile(backup) || backup.getFileName().toString().contains("..")) {
+                result = "The backup " + pending.backup() + " is gone; world " + worldName + " was not restored";
+                LOG.error(result);
+            } else {
+                Path aside = WorldBackup.restore(backup, worldDir, LocalDateTime.now());
+                result = "Restored world " + worldName + " from " + pending.backup() + "; the world it replaced is kept as "
+                        + aside.getFileName();
+                LOG.info(result);
+            }
+        } catch (IOException | RuntimeException e) {
+            result = "Restoring world " + worldName + " from " + pending.backup() + " failed: " + e.getMessage()
+                    + ". The world is as it was.";
+            LOG.error(result, e);
+        }
+        try {
+            WorldBackup.clearPendingRestore(gameDir);
+        } catch (IOException e) {
+            LOG.error("Could not clear the restore asked for", e);
+        }
+        return Optional.of(result);
+    }
+
+    /** {@link #restorePending} for a dedicated server, whose world folder is level-name in server.properties. */
+    public static Optional<String> restorePendingOnServer(Path gameDir) {
+        String levelName = "world";
+        Path properties = gameDir.resolve("server.properties");
+        if (Files.isRegularFile(properties)) {
+            java.util.Properties props = new java.util.Properties();
+            try (java.io.Reader in = Files.newBufferedReader(properties, java.nio.charset.StandardCharsets.UTF_8)) {
+                props.load(in);
+                levelName = props.getProperty("level-name", levelName).trim();
+            } catch (IOException e) {
+                LOG.error("Could not read server.properties; looking for a restore of world {}", levelName, e);
+            }
+        }
+        return restorePending(gameDir.resolve(levelName), gameDir);
     }
 
     /** Remembers what the player chose on the confirmation screen, so the server start does not ask or back up again. */

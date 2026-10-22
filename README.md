@@ -8,9 +8,12 @@ updated or downgraded, Worldsure:
 
 1. in single player, stops before the world opens and shows the Worldsure screen: every
    changed mod as a card with how much of it is in the world. You choose: back up and play,
-   play without a backup, or go back. The same screen opens from the pause menu;
+   play without a backup, or go back. The same screen opens from the pause menu, and its
+   **Backups** button restores any automatic backup of the world;
 2. on a server, backs the world up to `backups/worldsure/` **before any chunk loads**
-   (the 5 newest copies per world are kept);
+   (the 5 newest copies per world are kept). `/worldsure backups` lists them and
+   `/worldsure restore <file>` restores one: the server stops and puts the backup in place when it
+   starts again;
 3. keeps the blocks of a removed mod. While the mod is missing they show as a
    "Block of a removed mod" that cannot be broken, and when the chunk is saved the
    original blocks and their chests or machines are written back. Put the mod back and
@@ -29,6 +32,9 @@ Worldsure, every chunk and entity file is read once in the background to fill th
 each chunk save keeps them current. Adding a mod is reported but
 does not trigger a backup. The world on disk never contains placeholders, so removing
 Worldsure itself is always safe.
+
+A restore never deletes anything: the world it replaces is renamed to
+`<world>_before_restore_<time>` next to it.
 
 Settings live in `config/worldsure.properties` (`autoBackup`, `keepBackups`).
 

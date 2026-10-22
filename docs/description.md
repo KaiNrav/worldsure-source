@@ -15,6 +15,8 @@ mod added: blocks, chests and machines, mobs. Worldsure notices before that happ
   screen again any time from the pause menu.
 - **Backs up servers automatically.** On a dedicated server the world is zipped to
   `backups/worldsure/` before a single chunk loads. The 5 newest backups per world are kept.
+- **Restores a backup in two clicks.** Pick one from the *Backups* list on the Worldsure screen, or
+  use `/worldsure restore` on a server. The world it replaces is kept, never deleted.
 - **Keeps the blocks of removed mods.** While a mod is missing its blocks appear as a
   *Block of a removed mod* that cannot be broken. When the chunk is saved, the original blocks and
   their contents are written back, so putting the mod back restores everything.

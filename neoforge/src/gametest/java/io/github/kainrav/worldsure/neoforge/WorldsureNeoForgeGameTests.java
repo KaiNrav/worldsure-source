@@ -14,6 +14,7 @@ import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
 //#else
 //$ import io.github.kainrav.worldsure.mc.EntityGameTests;
+//$ import io.github.kainrav.worldsure.mc.BackupGameTests;
 //$ import io.github.kainrav.worldsure.mc.ScanGameTests;
 //$ import io.github.kainrav.worldsure.mc.ItemGameTests;
 //$ import net.minecraft.gametest.framework.GameTest;
@@ -106,6 +107,11 @@ public final class WorldsureNeoForgeGameTests {
 //$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
 //$     public static void scanCountsStoredChunks(GameTestHelper helper) {
 //$         ScanGameTests.scanCountsStoredChunks(helper);
+//$     }
+//$
+//$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+//$     public static void commandsListAndAskForRestore(GameTestHelper helper) {
+//$         BackupGameTests.commandsListAndAskForRestore(helper);
 //$     }
 //$ }
 //#endif

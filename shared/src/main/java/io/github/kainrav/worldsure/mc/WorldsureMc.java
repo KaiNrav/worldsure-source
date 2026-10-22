@@ -80,6 +80,18 @@ public final class WorldsureMc {
         return server.getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize();
     }
 
+    /**
+     * When a dedicated server's mods load, before it reads its world: restores the backup asked for with
+     * /worldsure restore.
+     */
+    public static void onDedicatedServerInit(Path gameDir) {
+        try {
+            Worldsure.restorePendingOnServer(gameDir);
+        } catch (RuntimeException e) {
+            Worldsure.LOG.error("Could not restore the backup asked for", e);
+        }
+    }
+
     /** Before the levels load. */
     public static void onServerStarting(MinecraftServer server) {
         Platform platform = Platform.get();

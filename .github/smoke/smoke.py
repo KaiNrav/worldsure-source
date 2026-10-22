@@ -7,7 +7,9 @@ End-to-end check on a real dedicated server, for one target such as 26.3:fabric:
    uninstalled; drop the object counts so the background scan counts the world again;
 3. start again, edit that chunk and save: the world must be backed up, the change reported,
    and fakemod:stone, fakemod:mob, fakemod:gem and fakemod:grove must still be on disk, counted
-   in the passport.
+   in the passport;
+4. ask for that backup with /worldsure restore: the server must stop by itself, and on the next
+   start the world must be the backup again, the replaced world kept next to it.
 """
 import glob
 import json
@@ -66,8 +68,9 @@ def rcon(*commands):
     s.close()
 
 
-def run_server(*commands):
-    """Starts the server, runs commands over RCON once it is up, stops it and returns its output."""
+def run_server(*commands, finish=("save-all flush", "stop")):
+    """Starts the server, runs commands over RCON once it is up, stops it and returns its output.
+    With finish=() the commands themselves must stop the server."""
     task = f":{TARGET}:runServer"
     proc = subprocess.Popen([GRADLE, task, f"-Ptargets={MINECRAFT}", "--console=plain"], cwd=ROOT, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True)
@@ -86,7 +89,7 @@ def run_server(*commands):
     if not ready.wait(900):
         proc.kill()
         raise SystemExit(f"{TARGET} server did not start")
-    rcon(*commands, "save-all flush", "stop")
+    rcon(*commands, *finish)
     proc.wait(300)
     reader.join(30)
     return "".join(lines)
@@ -233,6 +236,16 @@ def main():
     items = manifest.get("counts", {}).get("fakemod", {}).get("items", 0)
     check(items == 5, f"the passport counts the fakemod items ({items})")
     check("fakemod" not in manifest["mods"], "the passport now lists the mods actually installed")
+
+    backups = sorted(os.path.basename(p) for p in glob.glob(os.path.join(RUN, "backups", "worldsure", "world_*.zip")))
+    output = run_server(f"worldsure restore {backups[-1]}", finish=())
+    check(f"Restore of world from {backups[-1]} asked for" in output, "/worldsure restore was accepted and stopped the server")
+    output = run_server()
+    check(f"Restored world world from {backups[-1]}" in output, "the backup was restored on the next start")
+    check(glob.glob(os.path.join(RUN, "world_before_restore_*", "level.dat")), "the replaced world is kept next to it")
+    names = palette_names(nbt.read_chunk(overworld_region(), 0))
+    check("minecraft:glass" not in names, "the world is the backup again: the edit made after it is gone")
+    check("fakemod:stone" in names, "the restored world still holds fakemod:stone")
     log("all checks passed")
 
 

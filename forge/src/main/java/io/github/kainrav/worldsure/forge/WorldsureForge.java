@@ -5,11 +5,13 @@ import io.github.kainrav.worldsure.Worldsure;
 import io.github.kainrav.worldsure.mc.MissingBlocks;
 import io.github.kainrav.worldsure.mc.MissingItems;
 import io.github.kainrav.worldsure.mc.Platform;
+import io.github.kainrav.worldsure.mc.WorldsureCommands;
 import io.github.kainrav.worldsure.mc.WorldsureMc;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
@@ -43,8 +45,11 @@ public final class WorldsureForge implements Platform {
                 WorldsureMc.onPlayerJoin(player, player.getServer());
             }
         });
+        MinecraftForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> WorldsureCommands.register(event.getDispatcher()));
         if (FMLEnvironment.dist == Dist.CLIENT) {
             WorldsureForgeClient.init();
+        } else {
+            WorldsureMc.onDedicatedServerInit(gameDir());
         }
     }
 

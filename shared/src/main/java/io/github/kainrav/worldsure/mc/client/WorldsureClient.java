@@ -41,6 +41,8 @@ public final class WorldsureClient {
             return false;
         }
         Platform platform = Platform.get();
+        // A backup picked while the world was open is put in place now, before anything reads the world.
+        Worldsure.restorePending(dir, platform.gameDir());
         Optional<WorldReview> review = Worldsure.review(dir, platform.configDir(), platform.installedMods());
         if (review.isEmpty() || !review.get().hasChanges()) {
             return false;
@@ -79,6 +81,13 @@ public final class WorldsureClient {
                     Component.translatable("worldsure.backup_failed.question", backup.error()),
                     Component.translatable("worldsure.button.play_anyway"),
                     CommonComponents.GUI_CANCEL));
+        }
+
+        /** After a backup was restored: shows the screen again for the restored world, or opens it. */
+        void reopen() {
+            if (!interceptOpen(worldDir, open, cancel)) {
+                open.run();
+            }
         }
 
         void play(Report.BackupResult backup) {

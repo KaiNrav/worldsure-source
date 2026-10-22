@@ -4,8 +4,11 @@ import io.github.kainrav.worldsure.ModInfo;
 import io.github.kainrav.worldsure.mc.MissingBlocks;
 import io.github.kainrav.worldsure.mc.MissingItems;
 import io.github.kainrav.worldsure.mc.Platform;
+import io.github.kainrav.worldsure.mc.WorldsureCommands;
 import io.github.kainrav.worldsure.mc.WorldsureMc;
+import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
@@ -28,6 +31,11 @@ public final class WorldsureFabric implements ModInitializer, Platform {
         ServerLifecycleEvents.SERVER_STOPPED.register(WorldsureMc::onServerStopped);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
                 WorldsureMc.onPlayerJoin(handler.getPlayer(), server));
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+                WorldsureCommands.register(dispatcher));
+        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) {
+            WorldsureMc.onDedicatedServerInit(gameDir());
+        }
     }
 
     @Override

@@ -85,8 +85,11 @@ jobs:
       - name: Game tests
         timeout-minutes: 30
         run: |
+          set -o pipefail
           target='${{ matrix.target }}'
-          ./gradlew ":${target%%:*}:${target##*:}:gametest" "-Ptargets=${target%%:*}" --console=plain
+          ./gradlew ":${target%%:*}:${target##*:}:gametest" "-Ptargets=${target%%:*}" --console=plain | tee gametest.log
+          # A server that stopped half way also exits cleanly; only the summary line proves every test ran.
+          grep -qE 'All [0-9]+ required tests passed' gametest.log
       - name: Server smoke test
         timeout-minutes: 30
         run: python3 .github/smoke/smoke.py ${{ matrix.target }}

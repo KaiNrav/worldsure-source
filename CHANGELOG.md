@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0
+
+- Backups can be restored from the game. The Worldsure screen has a **Backups** button, both
+  before a changed world opens and from the pause menu, listing the world's automatic backups with
+  their time and size. Before the world opens, the picked backup is restored at once; while the
+  world is open, it is restored the next time the world is opened.
+- On a server, `/worldsure backups` lists the backups (game masters) and `/worldsure restore <file>`
+  (owners) stops the server and restores the backup when it starts again.
+- A restore never deletes anything: the world it replaces is renamed to
+  `<world>_before_restore_<time>` next to it, and shows up in the world list in single player. A
+  backup that cannot be read leaves the world as it was.
+
 ## 0.4.0
 
 - The counts on the Worldsure screen now cover the whole world from the first start: in the

@@ -5,6 +5,7 @@ import io.github.kainrav.worldsure.Worldsure;
 import io.github.kainrav.worldsure.mc.MissingBlocks;
 import io.github.kainrav.worldsure.mc.MissingItems;
 import io.github.kainrav.worldsure.mc.Platform;
+import io.github.kainrav.worldsure.mc.WorldsureCommands;
 import io.github.kainrav.worldsure.mc.WorldsureMc;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,6 +16,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
@@ -41,12 +43,15 @@ public final class WorldsureNeoForge implements Platform {
                 WorldsureMc.onPlayerJoin(player, player.level().getServer());
             }
         });
+        NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class, event -> WorldsureCommands.register(event.getDispatcher()));
         //#if >=1.21.11
         if (FMLEnvironment.getDist() == Dist.CLIENT) {
         //#else
         //$ if (FMLEnvironment.dist == Dist.CLIENT) {
         //#endif
             WorldsureNeoForgeClient.init();
+        } else {
+            WorldsureMc.onDedicatedServerInit(gameDir());
         }
     }
 

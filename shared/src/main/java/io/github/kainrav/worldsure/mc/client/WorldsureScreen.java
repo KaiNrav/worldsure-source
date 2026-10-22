@@ -16,7 +16,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
 //#endif
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -111,12 +110,16 @@ public final class WorldsureScreen extends Screen {
                 default -> buttons.add(button("worldsure.button.play", FlatButton.Style.PRIMARY,
                         () -> choices.play(Report.BackupResult.NOT_NEEDED)));
             }
+            FlatButton backups = button("worldsure.button.backups", FlatButton.Style.SECONDARY,
+                    () -> WorldsureClient.setScreen(BackupsScreen.beforeLoad(this, choices.worldDir(), choices::reopen)));
+            backups.active = hasBackups(choices.worldDir());
+            buttons.add(1, backups);
         } else {
-            Path backups = WorldBackup.backupsDir(Platform.get().gameDir());
-            FlatButton openBackups = button("worldsure.button.backups", FlatButton.Style.SECONDARY,
-                    () -> WorldsureClient.openFolder(backups));
-            openBackups.active = Files.isDirectory(backups);
-            buttons.add(openBackups);
+            Path world = openWorldDir();
+            FlatButton backups = button("worldsure.button.backups", FlatButton.Style.SECONDARY,
+                    () -> WorldsureClient.setScreen(BackupsScreen.inGame(this, world)));
+            backups.active = world != null && hasBackups(world);
+            buttons.add(backups);
             buttons.add(button("worldsure.button.done", FlatButton.Style.PRIMARY, onBack));
         }
         int gap = 6;
@@ -128,6 +131,20 @@ public final class WorldsureScreen extends Screen {
             button.setWidth(buttonWidth);
             addRenderableWidget(button);
         }
+    }
+
+    private static boolean hasBackups(Path worldDir) {
+        try {
+            return !WorldBackup.list(Platform.get().gameDir(), worldDir.getFileName().toString()).isEmpty();
+        } catch (java.io.IOException e) {
+            return false;
+        }
+    }
+
+    /** The folder of the single player world that is open now, or null. */
+    private static Path openWorldDir() {
+        net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        return server == null ? null : io.github.kainrav.worldsure.mc.WorldsureMc.worldDir(server);
     }
 
     private static FlatButton button(String key, FlatButton.Style style, Runnable onPress) {
