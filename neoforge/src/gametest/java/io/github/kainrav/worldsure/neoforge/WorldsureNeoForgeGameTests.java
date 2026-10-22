@@ -14,6 +14,7 @@ import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
 //#else
 //$ import io.github.kainrav.worldsure.mc.EntityGameTests;
+//$ import io.github.kainrav.worldsure.mc.ItemGameTests;
 //$ import net.minecraft.gametest.framework.GameTest;
 //$ import net.minecraft.gametest.framework.GameTestHelper;
 //$ import net.neoforged.neoforge.gametest.GameTestHolder;
@@ -79,6 +80,21 @@ public final class WorldsureNeoForgeGameTests {
 //$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
 //$     public static void entityStorageKeepsMissingEntities(GameTestHelper helper) {
 //$         EntityGameTests.entityStorageKeepsMissingEntities(helper);
+//$     }
+//$
+//$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+//$     public static void placeholdersCarryTheirItems(GameTestHelper helper) {
+//$         ItemGameTests.placeholdersCarryTheirItems(helper);
+//$     }
+//$
+//$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+//$     public static void chestKeepsMissingItems(GameTestHelper helper) {
+//$         ItemGameTests.chestKeepsMissingItems(helper);
+//$     }
+//$
+//$     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+//$     public static void droppedItemKeepsMissingItem(GameTestHelper helper) {
+//$         ItemGameTests.droppedItemKeepsMissingItem(helper);
 //$     }
 //$ }
 //#endif

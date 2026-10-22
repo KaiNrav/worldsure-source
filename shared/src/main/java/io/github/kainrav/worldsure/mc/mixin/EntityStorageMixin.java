@@ -90,7 +90,7 @@ public abstract class EntityStorageMixin {
             throw e;
         }
         try {
-            Worldsure.counts().putEntities(dimension, WorldsureMc.chunkKey(pos), MissingEntities.count(out));
+            Worldsure.counts().putEntities(dimension, WorldsureMc.chunkKey(pos), MissingEntities.countWithItems(out));
         } catch (RuntimeException e) {
             Worldsure.LOG.warn("Could not count entities in chunk {}", pos, e);
         }

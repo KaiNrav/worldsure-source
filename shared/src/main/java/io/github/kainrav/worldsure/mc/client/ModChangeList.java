@@ -200,7 +200,8 @@ final class ModChangeList extends ObjectSelectionList<ModChangeList.Row> {
                 tooltip.add(detail);
                 if (counted) {
                     tooltip.add(Theme.colored(Component.translatable("worldsure.counts.full", exact(entry.counts().blocks()),
-                            exact(entry.counts().blockEntities()), exact(entry.counts().entities())), Theme.MUTED));
+                            exact(entry.counts().blockEntities()), exact(entry.counts().entities()),
+                            exact(entry.counts().items())), Theme.MUTED));
                 }
                 if (entry.status() == WorldReview.Status.REMOVED && counted) {
                     tooltip.add(Theme.colored(Component.translatable("worldsure.counts.removed_hint"), Theme.ORANGE));
@@ -210,7 +211,7 @@ final class ModChangeList extends ObjectSelectionList<ModChangeList.Row> {
         }
 
         /**
-         * Small chips with how many blocks, chests or machines and mobs of the mod the world holds,
+         * Small chips with how many blocks, chests or machines, mobs and items of the mod the world holds,
          * right-aligned at {@code right}.
          *
          * @return the left edge of the chips, or {@code right} when there are none
@@ -227,8 +228,8 @@ final class ModChangeList extends ObjectSelectionList<ModChangeList.Row> {
                 return x;
             }
             int x = right;
-            long[] values = {counts.entities(), counts.blockEntities(), counts.blocks()};
-            String[] glyphs = {"☻", "⚙", "■"};
+            long[] values = {counts.items(), counts.entities(), counts.blockEntities(), counts.blocks()};
+            String[] glyphs = {"✦", "☻", "⚙", "■"};
             for (int i = 0; i < values.length; i++) {
                 if (values[i] == 0) {
                     continue;

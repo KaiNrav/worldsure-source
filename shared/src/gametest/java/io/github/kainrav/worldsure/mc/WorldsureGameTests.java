@@ -51,6 +51,9 @@ public final class WorldsureGameTests {
         tests.put("missing_blocks_come_back", WorldsureGameTests::missingBlocksComeBack);
         tests.put("missing_entities_come_back", EntityGameTests::missingEntitiesComeBack);
         tests.put("entity_storage_keeps_missing_entities", EntityGameTests::entityStorageKeepsMissingEntities);
+        tests.put("placeholders_carry_their_items", ItemGameTests::placeholdersCarryTheirItems);
+        tests.put("chest_keeps_missing_items", ItemGameTests::chestKeepsMissingItems);
+        tests.put("dropped_item_keeps_missing_item", ItemGameTests::droppedItemKeepsMissingItem);
         return tests;
     }
 

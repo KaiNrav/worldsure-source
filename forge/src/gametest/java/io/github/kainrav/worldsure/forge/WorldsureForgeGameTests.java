@@ -3,6 +3,7 @@ package io.github.kainrav.worldsure.forge;
 import io.github.kainrav.worldsure.Worldsure;
 import io.github.kainrav.worldsure.mc.EntityGameTests;
 import io.github.kainrav.worldsure.mc.WorldsureGameTests;
+import io.github.kainrav.worldsure.mc.ItemGameTests;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraftforge.gametest.GameTestHolder;
@@ -38,5 +39,20 @@ public final class WorldsureForgeGameTests {
     @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
     public static void entityStorageKeepsMissingEntities(GameTestHelper helper) {
         EntityGameTests.entityStorageKeepsMissingEntities(helper);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+    public static void placeholdersCarryTheirItems(GameTestHelper helper) {
+        ItemGameTests.placeholdersCarryTheirItems(helper);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+    public static void chestKeepsMissingItems(GameTestHelper helper) {
+        ItemGameTests.chestKeepsMissingItems(helper);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = WorldsureGameTests.MAX_TICKS)
+    public static void droppedItemKeepsMissingItem(GameTestHelper helper) {
+        ItemGameTests.droppedItemKeepsMissingItem(helper);
     }
 }

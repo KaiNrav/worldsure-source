@@ -20,6 +20,8 @@ mod added: blocks, chests and machines, mobs. Worldsure notices before that happ
   their contents are written back, so putting the mod back restores everything.
 - **Keeps the mobs of removed mods.** Mobs and other entities of a missing mod are set aside when
   their chunk loads and written back every time it is saved, so they return with the mod.
+- **Keeps the items of removed mods.** In chests, inventories, item frames and on the ground, each
+  becomes an *Item of a removed mod* that carries the original and turns back into it on every save.
 
 Removing Worldsure itself is always safe: its placeholder blocks are never saved into the world.
 
@@ -31,7 +33,6 @@ On Fabric, Fabric API is required.
 ## Good to know
 
 - Install it on both the server and the clients, since it adds a block.
-- Items of a removed mod are not kept yet. Make a backup before removing mods that add them.
 - Counts only cover chunks saved while Worldsure was installed.
 - Settings: `config/worldsure.properties` (`autoBackup`, `keepBackups`).
 

@@ -2,6 +2,7 @@ package io.github.kainrav.worldsure.fabric;
 
 import io.github.kainrav.worldsure.ModInfo;
 import io.github.kainrav.worldsure.mc.MissingBlocks;
+import io.github.kainrav.worldsure.mc.MissingItems;
 import io.github.kainrav.worldsure.mc.Platform;
 import io.github.kainrav.worldsure.mc.WorldsureMc;
 import net.fabricmc.api.ModInitializer;
@@ -20,6 +21,7 @@ public final class WorldsureFabric implements ModInitializer, Platform {
     public void onInitialize() {
         Platform.set(this);
         Registry.register(BuiltInRegistries.BLOCK, MissingBlocks.KEY, MissingBlocks.create());
+        Registry.register(BuiltInRegistries.ITEM, MissingItems.KEY, MissingItems.create());
         // SERVER_STARTING fires before the levels load, so the backup sees the world as it was on disk.
         ServerLifecycleEvents.SERVER_STARTING.register(WorldsureMc::onServerStarting);
         ServerLifecycleEvents.SERVER_STARTED.register(WorldsureMc::onServerStarted);

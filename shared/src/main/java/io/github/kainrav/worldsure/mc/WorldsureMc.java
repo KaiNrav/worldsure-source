@@ -81,6 +81,7 @@ public final class WorldsureMc {
         Worldsure.onWorldClosed(worldDir(server), Platform.get().loaderName(), Platform.get().installedMods());
         MissingBlocks.clear();
         MissingEntities.clear();
+        MissingItems.clear();
     }
 
     public static void onPlayerJoin(ServerPlayer player, MinecraftServer server) {

@@ -20,24 +20,32 @@ import java.util.zip.GZIPOutputStream;
  * Per-chunk counts of modded objects, refreshed whenever the game saves a chunk, so the totals
  * describe what is on disk. Vanilla ({@code minecraft}) objects are not counted: they never go missing.
  * Stored as {@code <world>/worldsure/index.dat}, which starts with the number of its format.
+ *
+ * <p>Formats: 1 held blocks and block entities per chunk and namespace, then entities; 2 (since 0.3.0)
+ * adds the items found with the blocks (in containers) and with the entities (dropped, carried, framed).
  */
 public final class CountIndex {
     public static final String FILE_NAME = "index.dat";
     /** The format this version writes. A layout change bumps it and teaches {@link #read} the old one. */
-    public static final int FORMAT = 1;
+    public static final int FORMAT = 2;
     private static final String VANILLA = "minecraft";
 
     /** dimension -> chunk key -> namespace -> counts */
     private final Map<String, Map<Long, Chunk>> dimensions = new ConcurrentHashMap<>();
     private volatile boolean dirty;
 
-    /** What one chunk holds; blocks and entities are saved at different times, so each half is replaced on its own. */
-    private record Chunk(Map<String, long[]> blocks, Map<String, Long> entities) {
+    /**
+     * What one chunk holds; blocks and entities are saved at different times, so each half is replaced on its own.
+     *
+     * @param blocks   namespace -> {blocks, block entities, items in block entities}
+     * @param entities namespace -> {entities, items with entities}
+     */
+    private record Chunk(Map<String, long[]> blocks, Map<String, long[]> entities) {
         Chunk withBlocks(Map<String, long[]> newBlocks) {
             return new Chunk(newBlocks, entities);
         }
 
-        Chunk withEntities(Map<String, Long> newEntities) {
+        Chunk withEntities(Map<String, long[]> newEntities) {
             return new Chunk(blocks, newEntities);
         }
 
@@ -57,27 +65,36 @@ public final class CountIndex {
     /**
      * Replaces the block counts of one chunk.
      *
-     * @param counts namespace -> {blocks, block entities}; vanilla entries are ignored
+     * @param counts namespace -> {blocks, block entities} or {blocks, block entities, items}; vanilla entries are ignored
      */
     public void putBlocks(String dimension, long chunkKey, Map<String, long[]> counts) {
-        Map<String, long[]> modded = new HashMap<>();
-        counts.forEach((namespace, value) -> {
-            if (!VANILLA.equals(namespace) && (value[0] != 0 || value[1] != 0)) {
-                modded.put(namespace, new long[]{value[0], value[1]});
-            }
-        });
-        update(dimension, chunkKey, chunk -> chunk.withBlocks(modded));
+        update(dimension, chunkKey, chunk -> chunk.withBlocks(modded(counts, 3)));
     }
 
-    /** Replaces the entity counts of one chunk; vanilla entries are ignored. */
-    public void putEntities(String dimension, long chunkKey, Map<String, Long> counts) {
-        Map<String, Long> modded = new HashMap<>();
+    /**
+     * Replaces the entity counts of one chunk.
+     *
+     * @param counts namespace -> {entities} or {entities, items}; vanilla entries are ignored
+     */
+    public void putEntities(String dimension, long chunkKey, Map<String, long[]> counts) {
+        update(dimension, chunkKey, chunk -> chunk.withEntities(modded(counts, 2)));
+    }
+
+    /** The non-vanilla, non-zero entries, each padded to {@code size} values. */
+    private static Map<String, long[]> modded(Map<String, long[]> counts, int size) {
+        Map<String, long[]> modded = new HashMap<>();
         counts.forEach((namespace, value) -> {
-            if (!VANILLA.equals(namespace) && value != 0) {
-                modded.put(namespace, value);
+            long[] padded = new long[size];
+            System.arraycopy(value, 0, padded, 0, Math.min(size, value.length));
+            boolean any = false;
+            for (long v : padded) {
+                any |= v != 0;
+            }
+            if (!VANILLA.equals(namespace) && any) {
+                modded.put(namespace, padded);
             }
         });
-        update(dimension, chunkKey, chunk -> chunk.withEntities(modded));
+        return modded;
     }
 
     private void update(String dimension, long chunkKey, java.util.function.UnaryOperator<Chunk> change) {
@@ -95,9 +112,9 @@ public final class CountIndex {
         for (Map<Long, Chunk> chunks : dimensions.values()) {
             for (Chunk chunk : chunks.values()) {
                 chunk.blocks().forEach((namespace, value) ->
-                        totals.merge(namespace, new ObjectCounts(value[0], value[1], 0), ObjectCounts::plus));
+                        totals.merge(namespace, new ObjectCounts(value[0], value[1], 0, value[2]), ObjectCounts::plus));
                 chunk.entities().forEach((namespace, value) ->
-                        totals.merge(namespace, new ObjectCounts(0, 0, value), ObjectCounts::plus));
+                        totals.merge(namespace, new ObjectCounts(0, 0, value[0], value[1]), ObjectCounts::plus));
             }
         }
         return totals;
@@ -108,7 +125,8 @@ public final class CountIndex {
     }
 
     /**
-     * Reads the counts of a world, empty if it has none yet.
+     * Reads the counts of a world, empty if it has none yet. Older formats are read as they were
+     * written; the next {@link #write} stores the current one.
      *
      * @throws NewerFormatException if a newer Worldsure wrote the counts
      */
@@ -126,6 +144,7 @@ public final class CountIndex {
             if (format < 1) {
                 throw new IOException("Unknown count index format " + format);
             }
+            boolean items = format >= 2;
             int dimensionCount = in.readInt();
             for (int d = 0; d < dimensionCount; d++) {
                 String dimension = in.readUTF();
@@ -136,12 +155,12 @@ public final class CountIndex {
                     Map<String, long[]> blocks = new HashMap<>();
                     int blockEntries = in.readInt();
                     for (int i = 0; i < blockEntries; i++) {
-                        blocks.put(in.readUTF(), new long[]{in.readLong(), in.readLong()});
+                        blocks.put(in.readUTF(), new long[]{in.readLong(), in.readLong(), items ? in.readLong() : 0});
                     }
-                    Map<String, Long> entities = new HashMap<>();
+                    Map<String, long[]> entities = new HashMap<>();
                     int entityEntries = in.readInt();
                     for (int i = 0; i < entityEntries; i++) {
-                        entities.put(in.readUTF(), in.readLong());
+                        entities.put(in.readUTF(), new long[]{in.readLong(), items ? in.readLong() : 0});
                     }
                     chunks.put(key, new Chunk(blocks, entities));
                 }
@@ -170,11 +189,13 @@ public final class CountIndex {
                         out.writeUTF(entry.getKey());
                         out.writeLong(entry.getValue()[0]);
                         out.writeLong(entry.getValue()[1]);
+                        out.writeLong(entry.getValue()[2]);
                     }
                     out.writeInt(chunk.getValue().entities().size());
-                    for (Map.Entry<String, Long> entry : chunk.getValue().entities().entrySet()) {
+                    for (Map.Entry<String, long[]> entry : chunk.getValue().entities().entrySet()) {
                         out.writeUTF(entry.getKey());
-                        out.writeLong(entry.getValue());
+                        out.writeLong(entry.getValue()[0]);
+                        out.writeLong(entry.getValue()[1]);
                     }
                 }
             }

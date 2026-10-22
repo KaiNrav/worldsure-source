@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0
+
+- Items of a removed mod are kept: in chests and machines, in player inventories and ender chests,
+  in item frames, on the ground, carried by mobs, and inside shulker boxes and bundles. While the mod
+  is missing each such stack is an *Item of a removed mod* that carries the original stack; its
+  tooltip names the item and how many. It can be moved, stored and dropped like any item, and every
+  save writes the original stack back wherever it now is, so the files never hold a placeholder.
+  Putting the mod back turns them into the real items again.
+- The passport and the Worldsure screen now count items per mod too. The object counts file
+  (`index.dat`) moves to format 2; format 1 files are read and rewritten.
+- A placeholder item does not stack, so two kept stacks can never merge and lose one of them.
+
 ## 0.2.0
 
 - Mobs and other entities of a removed mod are kept. The game would skip them when their chunk

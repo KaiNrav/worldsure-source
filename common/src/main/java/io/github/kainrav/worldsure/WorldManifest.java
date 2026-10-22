@@ -145,7 +145,7 @@ public final class WorldManifest {
             if (stored.counts != null) {
                 stored.counts.forEach((namespace, c) -> {
                     if (c != null) {
-                        counts.put(namespace, new ObjectCounts(c.blocks, c.blockEntities, c.entities));
+                        counts.put(namespace, new ObjectCounts(c.blocks, c.blockEntities, c.entities, c.items));
                     }
                 });
             }
@@ -186,6 +186,7 @@ public final class WorldManifest {
             out.blocks = c.blocks();
             out.blockEntities = c.blockEntities();
             out.entities = c.entities();
+            out.items = c.items();
             stored.counts.put(namespace, out);
         });
         try (Writer writer = Files.newBufferedWriter(tmp, StandardCharsets.UTF_8)) {
@@ -211,5 +212,6 @@ public final class WorldManifest {
         long blocks;
         long blockEntities;
         long entities;
+        long items;
     }
 }

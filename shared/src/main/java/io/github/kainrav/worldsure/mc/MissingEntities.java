@@ -163,6 +163,17 @@ public final class MissingEntities {
         return counts;
     }
 
+    /** Per namespace, {entities, items they hold or are} in an entity chunk tag, as the count index takes them. */
+    public static Map<String, long[]> countWithItems(CompoundTag chunkTag) {
+        Map<String, long[]> counts = new HashMap<>();
+        count(chunkTag).forEach((namespace, n) -> counts.computeIfAbsent(namespace, k -> new long[2])[0] += n);
+        if (chunkTag != null) {
+            MissingItems.count(Nbt.list(chunkTag, ENTITIES))
+                    .forEach((namespace, n) -> counts.computeIfAbsent(namespace, k -> new long[2])[1] += n);
+        }
+        return counts;
+    }
+
     private static void countInto(ListTag entities, Map<String, Long> counts) {
         for (int i = 0; i < entities.size(); i++) {
             CompoundTag entity = Nbt.compoundAt(entities, i);

@@ -48,7 +48,7 @@ public final class Report {
         return lines;
     }
 
-    /** Describes what a removed mod leaves behind, e.g. "1,204 blocks, 3 chests or machines, 2 mobs in the world". */
+    /** Describes what a removed mod leaves behind, e.g. "1,204 blocks, 3 chests or machines, 2 mobs, 40 items in the world". */
     static String describe(ObjectCounts counts) {
         if (counts == null || counts.isZero()) {
             return "nothing of it counted in saved chunks";
@@ -62,6 +62,9 @@ public final class Report {
         }
         if (counts.entities() > 0) {
             parts.add(String.format(Locale.ROOT, "%,d mobs or other entities", counts.entities()));
+        }
+        if (counts.items() > 0) {
+            parts.add(String.format(Locale.ROOT, "%,d items", counts.items()));
         }
         return String.join(", ", parts) + " in the world";
     }

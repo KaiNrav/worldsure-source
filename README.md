@@ -17,9 +17,12 @@ updated or downgraded, Worldsure:
    everything is where it was;
 4. keeps the mobs and other entities of a removed mod the same way: they are set aside when
    their chunk loads and written back whenever it is saved;
-5. writes what changed to the log, and in chat tells single player players how the backup went.
+5. keeps the items of a removed mod, wherever they are (chests, inventories, item frames, the
+   ground, shulker boxes): each becomes an "Item of a removed mod" that carries the original stack
+   and turns back into it whenever the game saves;
+6. writes what changed to the log, and in chat tells single player players how the backup went.
 
-Counts of blocks, block entities and entities per mod are kept in
+Counts of blocks, block entities, entities and items per mod are kept in
 `<world>/worldsure/index.dat` and summed into the passport. Adding a mod is reported but
 does not trigger a backup. The world on disk never contains placeholders, so removing
 Worldsure itself is always safe.
@@ -36,9 +39,10 @@ world is backed up, but both files stay as they are until that newer version ope
 
 ## Not done yet
 
-Items of removed mods (in chests, inventories and on the ground they are still dropped by the
-game) and item counts. Entities of a removed mod are kept but not shown while the mod is missing.
-Counts cover chunks saved while Worldsure was installed.
+Entities of a removed mod are kept but not shown while the mod is missing. Counts cover chunks
+saved while Worldsure was installed; items in player inventories are kept but not counted. Items
+stored by other mods in their own files (storage networks, global backpacks) are outside Worldsure's
+reach.
 
 ## Supported versions
 
@@ -75,7 +79,7 @@ builds all twelve jars into `versions/<minecraft>/<loader>/build/libs`, named li
 
 - `common/` loader-independent logic (passport, diff, backup, report), plain Java with unit tests.
 - `shared/` Minecraft code used by every loader: the Worldsure screen and pause menu button, block
-  placeholders, kept entities and counting mixins. All targets use the official Mojang names, so it is
+  and item placeholders, kept entities and counting mixins. All targets use the official Mojang names, so it is
   compiled into each jar.
 - `fabric/`, `neoforge/`, `forge/` thin entry points that register the placeholder block and hook
   server start and player join.

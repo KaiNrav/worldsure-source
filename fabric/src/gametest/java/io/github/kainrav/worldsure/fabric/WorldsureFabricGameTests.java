@@ -2,6 +2,7 @@ package io.github.kainrav.worldsure.fabric;
 
 import io.github.kainrav.worldsure.mc.EntityGameTests;
 import io.github.kainrav.worldsure.mc.WorldsureGameTests;
+import io.github.kainrav.worldsure.mc.ItemGameTests;
 import net.minecraft.gametest.framework.GameTestHelper;
 //#if >=1.21.5
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -62,5 +63,32 @@ public final class WorldsureFabricGameTests {
     //#endif
     public void entityStorageKeepsMissingEntities(GameTestHelper helper) {
         EntityGameTests.entityStorageKeepsMissingEntities(helper);
+    }
+
+    //#if >=1.21.5
+    @GameTest(maxTicks = WorldsureGameTests.MAX_TICKS)
+    //#else
+    //$ @GameTest(template = EMPTY_STRUCTURE, timeoutTicks = WorldsureGameTests.MAX_TICKS)
+    //#endif
+    public void placeholdersCarryTheirItems(GameTestHelper helper) {
+        ItemGameTests.placeholdersCarryTheirItems(helper);
+    }
+
+    //#if >=1.21.5
+    @GameTest(maxTicks = WorldsureGameTests.MAX_TICKS)
+    //#else
+    //$ @GameTest(template = EMPTY_STRUCTURE, timeoutTicks = WorldsureGameTests.MAX_TICKS)
+    //#endif
+    public void chestKeepsMissingItems(GameTestHelper helper) {
+        ItemGameTests.chestKeepsMissingItems(helper);
+    }
+
+    //#if >=1.21.5
+    @GameTest(maxTicks = WorldsureGameTests.MAX_TICKS)
+    //#else
+    //$ @GameTest(template = EMPTY_STRUCTURE, timeoutTicks = WorldsureGameTests.MAX_TICKS)
+    //#endif
+    public void droppedItemKeepsMissingItem(GameTestHelper helper) {
+        ItemGameTests.droppedItemKeepsMissingItem(helper);
     }
 }

@@ -2,10 +2,10 @@
 End-to-end check on a real dedicated server, for one target such as 26.3:fabric:
 1. start a fresh world and stop it: the passport must be written;
 2. pretend a mod "fakemod" was removed: list it in the passport, turn the stone of one
-   chunk into fakemod:stone and an armor stand there into fakemod:mob, the way a world looks
-   after its mod is uninstalled;
+   chunk into fakemod:stone, an armor stand there into fakemod:mob and the diamonds in a chest
+   into fakemod:gem, the way a world looks after its mod is uninstalled;
 3. start again, edit that chunk and save: the world must be backed up, the change reported,
-   and fakemod:stone and fakemod:mob must still be on disk, counted in the passport.
+   and fakemod:stone, fakemod:mob and fakemod:gem must still be on disk, counted in the passport.
 """
 import glob
 import json
@@ -101,6 +101,18 @@ def overworld_region(kind="region"):
     return candidates[0]
 
 
+def chest_items(chunk):
+    for block_entity in chunk.value["block_entities"].value:
+        if block_entity.value["id"].value == "minecraft:chest":
+            return block_entity.value.get("Items", nbt.Tag(nbt.LIST, [])).value
+    raise SystemExit("FAILED: no chest in chunk 0,0")
+
+
+def stack_count(stack):
+    tag = stack.value.get("count") or stack.value.get("Count")
+    return tag.value if tag else 1
+
+
 def entity_ids(chunk):
     return [entity.value["id"].value for entity in chunk.value["Entities"].value]
 
@@ -136,7 +148,8 @@ def check(condition, message):
 def main():
     prepare()
 
-    run_server("forceload add 0 0", "summon minecraft:armor_stand 2 100 2 {NoGravity:1b,Invulnerable:1b}")
+    run_server("forceload add 0 0", "summon minecraft:armor_stand 2 100 2 {NoGravity:1b,Invulnerable:1b}",
+               "setblock 3 100 3 minecraft:chest", "item replace block 3 100 3 container.0 with minecraft:diamond 5")
     manifest_path = os.path.join(WORLD, "worldsure", "manifest.json")
     check(os.path.isfile(manifest_path), "the passport is written on the first start")
     with open(manifest_path) as f:
@@ -155,6 +168,12 @@ def main():
             name.value = "fakemod:stone"
             renamed += 1
     check(renamed > 0, f"chunk 0,0 has stone to turn into fakemod:stone ({renamed} sections)")
+    gems = 0
+    for stack in chest_items(chunk):
+        if stack.value["id"].value == "minecraft:diamond":
+            stack.value["id"].value = "fakemod:gem"
+            gems += 1
+    check(gems == 1, "the chest in chunk 0,0 has diamonds to turn into fakemod:gem")
     nbt.write_chunk(region, 0, chunk)
     entities_file = overworld_region("entities")
     entity_chunk = nbt.read_chunk(entities_file, 0)
@@ -174,6 +193,8 @@ def main():
     check("fakemod:stone" in names, "fakemod:stone is still on disk after the chunk was saved")
     check("worldsure:missing_block" not in names, "no placeholder reached the disk")
     check("minecraft:glass" in names, "the edit made while the mod was missing was saved too")
+    stacks = [(stack.value["id"].value, stack_count(stack)) for stack in chest_items(chunk)]
+    check(stacks == [("fakemod:gem", 5)], f"the chest still holds 5 fakemod:gem on disk ({stacks})")
     check(re.search(r"Kept \d+ entities of removed mods", output), "fakemod:mob was set aside on load")
     ids = entity_ids(nbt.read_chunk(entities_file, 0))
     check(ids.count("fakemod:mob") == 1, f"fakemod:mob is still on disk, once, after its chunk was saved ({ids})")
@@ -183,6 +204,8 @@ def main():
     check(blocks > 0, f"the passport counts fakemod blocks ({blocks})")
     mobs = manifest.get("counts", {}).get("fakemod", {}).get("entities", 0)
     check(mobs == 1, f"the passport counts the fakemod mob ({mobs})")
+    items = manifest.get("counts", {}).get("fakemod", {}).get("items", 0)
+    check(items == 5, f"the passport counts the fakemod items ({items})")
     check("fakemod" not in manifest["mods"], "the passport now lists the mods actually installed")
     log("all checks passed")
 

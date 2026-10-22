@@ -3,6 +3,7 @@ package io.github.kainrav.worldsure.forge;
 import io.github.kainrav.worldsure.ModInfo;
 import io.github.kainrav.worldsure.Worldsure;
 import io.github.kainrav.worldsure.mc.MissingBlocks;
+import io.github.kainrav.worldsure.mc.MissingItems;
 import io.github.kainrav.worldsure.mc.Platform;
 import io.github.kainrav.worldsure.mc.WorldsureMc;
 import net.minecraft.core.registries.Registries;
@@ -31,6 +32,8 @@ public final class WorldsureForge implements Platform {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
         modBus.addListener((RegisterEvent event) ->
                 event.register(Registries.BLOCK, helper -> helper.register(MissingBlocks.KEY, MissingBlocks.create())));
+        modBus.addListener((RegisterEvent event) ->
+                event.register(Registries.ITEM, helper -> helper.register(MissingItems.KEY, MissingItems.create())));
         // ServerAboutToStartEvent fires before the levels load, so the backup sees the world as it was on disk.
         MinecraftForge.EVENT_BUS.addListener((ServerAboutToStartEvent event) -> WorldsureMc.onServerStarting(event.getServer()));
         MinecraftForge.EVENT_BUS.addListener((ServerStartedEvent event) -> WorldsureMc.onServerStarted(event.getServer()));

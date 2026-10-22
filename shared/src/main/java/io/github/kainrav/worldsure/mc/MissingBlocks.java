@@ -256,7 +256,7 @@ public final class MissingBlocks {
         }
     }
 
-    /** Counts blocks and block entities per namespace in a chunk tag as it goes to disk. */
+    /** Counts blocks, block entities and the items they hold per namespace in a chunk tag as it goes to disk. */
     public static Map<String, long[]> count(CompoundTag chunkTag) {
         Map<String, long[]> counts = new HashMap<>();
         ListTag sections = Nbt.list(chunkTag, "sections");
@@ -266,10 +266,12 @@ public final class MissingBlocks {
                 continue;
             }
             read(blockStates).countBy(entry -> namespace(blockId(entry)))
-                    .forEach((namespace, n) -> counts.computeIfAbsent(namespace, k -> new long[2])[0] += n);
+                    .forEach((namespace, n) -> counts.computeIfAbsent(namespace, k -> new long[3])[0] += n);
         }
         Nbt.compounds(Nbt.list(chunkTag, "block_entities"))
-                .forEach(tag -> counts.computeIfAbsent(namespace(Nbt.stringOrEmpty(tag, "id")), k -> new long[2])[1]++);
+                .forEach(tag -> counts.computeIfAbsent(namespace(Nbt.stringOrEmpty(tag, "id")), k -> new long[3])[1]++);
+        MissingItems.count(Nbt.list(chunkTag, "block_entities"))
+                .forEach((namespace, n) -> counts.computeIfAbsent(namespace, k -> new long[3])[2] += n);
         return counts;
     }
 
